@@ -1,0 +1,117 @@
+You are my Principal Engineer. Build a production-ready, multi-tenant SaaS “Billing + Accounting” portal (India-ready GST) exactly like the screenshots (dashboard with cards, bar charts Revenue vs Expenses, Profit Trend, Quick Actions; left nav: Dashboard, Reports, Customers, Invoices, Inventory, Expenses, Staff, Settings). All features must work end-to-end.
+
+Credit-saving rules
+
+Plan first, then wait for my “OK”.
+
+Small PRs per milestone with diffs, commands to run, and seed data.
+
+No web browsing / paid APIs. Use local Postgres (or SQLite for dev), no schema resets.
+
+Reuse packages; don’t upgrade unless required.
+
+Stack (use this unless repo already exists)
+
+Next.js (App Router) + TypeScript
+
+Node/Express API (or Next API routes)
+
+Prisma ORM → PostgreSQL (Neon/Supabase URL via env).
+
+Auth: email+password with bcrypt, JWT access + httpOnly refresh.
+
+UI: Tailwind + shadcn/ui, Recharts for charts.
+
+PDF: server-side (pdfkit or puppeteer) with company branding.
+
+Email: local file/console adapter (no external SMTP).
+
+Payments: Stripe/Razorpay stubs behind feature flags (no live calls).
+
+Multi-tenancy & Security
+
+Orgs + Users + Memberships (roles: owner, admin, accountant, viewer).
+
+Every table has orgId and is scoped by org via middleware/Prisma policy.
+
+Org switcher in navbar; onboarding wizard after signup.
+
+Audit log for create/update/delete with userId, orgId, entity, diff.
+
+Rate limits on auth routes; CSRF for cookies; input validation (zod).
+
+Core Modules (all CRUD + business rules)
+
+Customers: GSTIN validation, billing/shipping, contacts.
+
+Items/Services: SKU, HSN/SAC, tax rates, unit, price; Inventory with stock ledger, GRN/Adjustments, low-stock alerts, multi-warehouse optional.
+
+Invoices:
+
+Per-org FY numbering: ORG/24-25/000123.
+
+Status: draft/sent/overdue/paid/partial/void; credit/debit notes.
+
+GST: CGST/SGST/IGST split, place of supply, reverse charge, composition flag, TCS/TDS, rounding.
+
+PDF with logo, bank/UPI/QR placeholder; email send (mock).
+
+Payments & part-payments with receipts.
+
+Expenses/Purchases: vendor, GST input, categories, attachments.
+
+Reports (India-ready):
+
+GSTR-1 (B2B/B2C/HSN summary) export (JSON/CSV), GSTR-3B summary.
+
+Sales register, tax summary by rate, A/R aging, item sales, expense summary, stock valuation.
+
+Dashboard: totals, overdue count, revenue vs expenses (monthly), profit trend, customer distribution pie, recent activity.
+
+Plans: Free/Pro/Business with feature flags + metering (invoice count, users).
+
+Settings: company profile, GSTIN/PAN, address, logo, sequence format, bank details; user management & invites.
+
+Data model (Prisma sketch)
+
+Organization, User, Membership(role), Customer, Item, Warehouse, StockTxn, Invoice, InvoiceItem, Payment, CreditNote, Expense, AuditLog, Plan, Subscription, SequenceCounter
+
+Deliverables per milestone
+
+DB migrations + seed for 2 demo orgs (prove isolation).
+
+API endpoints + zod schemas + OpenAPI JSON.
+
+UI pages for each module with filters, sort, pagination.
+
+PDF templates + email sender (file sink).
+
+Jest/Vitest tests: org isolation, RBAC guards, invoice numbering uniqueness.
+
+.env.sample, npm run dev, npm run seed, npm run test.
+
+Minimal Dockerfile/Compose (web + db) optional.
+
+Acceptance checks (must pass before next milestone)
+
+Sign up → create org → switch org → data isolation proven.
+
+Create customer/item/invoice; add part-payment; generate PDF; email (mock).
+
+GST breakup shows correct CGST/SGST/IGST per place of supply.
+
+GSTR-1/3B exports generate valid files.
+
+Dashboard charts reflect seeded + new data.
+
+Low-stock badge appears after sales.
+
+Audit log entries visible.
+
+Plan limits enforced (e.g., Free: 100 invoices/mo).
+
+Milestones (suggest)
+
+M0 Plan; M1 Auth+Orgs+RBAC; M2 Data model & migrations; M3 Customers/Items/Inventory; M4 Invoices/Payments/PDF; M5 Expenses; M6 Reports (GSTR-1/3B, aging); M7 Dashboard & activity; M8 Plans/flags; M9 Tests/Docs/Docker.
+
+Start by printing the M0 plan and file structure only; wait for my “OK” before coding.
