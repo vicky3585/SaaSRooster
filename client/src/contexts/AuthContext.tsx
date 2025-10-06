@@ -16,6 +16,7 @@ interface AuthContextType {
   logout: () => Promise<void>;
   switchOrg: (orgId: string) => Promise<void>;
   refetch: () => Promise<void>;
+  getAccessToken: () => string | null;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -23,6 +24,9 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [accessToken, setAccessToken] = useState<string | null>(() => {
+    return localStorage.getItem('accessToken');
+  });
 
   const fetchUser = async () => {
     try {
@@ -52,6 +56,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest('POST', '/api/auth/login', { email, password });
       const data = await response.json();
       setUser(data.user);
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+        localStorage.setItem('accessToken', data.accessToken);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -63,6 +71,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest('POST', '/api/auth/register', { email, password, fullName, orgName, gstin: gstin || '' });
       const data = await response.json();
       setUser(data.user);
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+        localStorage.setItem('accessToken', data.accessToken);
+      }
     } finally {
       setIsLoading(false);
     }
@@ -73,6 +85,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       await apiRequest('POST', '/api/auth/logout');
       setUser(null);
+      setAccessToken(null);
+      localStorage.removeItem('accessToken');
     } finally {
       setIsLoading(false);
     }
@@ -84,9 +98,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const response = await apiRequest('POST', '/api/auth/switch-org', { organizationId: orgId });
       const data = await response.json();
       setUser(data.user);
+      if (data.accessToken) {
+        setAccessToken(data.accessToken);
+        localStorage.setItem('accessToken', data.accessToken);
+      }
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const getAccessToken = () => {
+    return accessToken;
   };
 
   return (
@@ -99,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         logout,
         switchOrg,
         refetch: fetchUser,
+        getAccessToken,
       }}
     >
       {children}
