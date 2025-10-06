@@ -18,12 +18,93 @@ function hashToken(token: string): string {
 
 const router = Router();
 
+const registerSchema = z.object({
+  fullName: z.string().min(1),
+  email: z.string().email(),
+  password: z.string().min(6),
+  orgName: z.string().min(1),
+  gstin: z.string().length(15).optional().or(z.literal('')),
+});
+
 const signupSchema = z.object({
   name: z.string().min(1),
   email: z.string().email(),
   password: z.string().min(6),
   organizationName: z.string().min(1),
   organizationSlug: z.string().min(1).regex(/^[a-z0-9-]+$/),
+});
+
+router.post("/register", async (req, res) => {
+  try {
+    const body = registerSchema.parse(req.body);
+
+    const existingUser = await storage.getUserByEmail(body.email);
+    if (existingUser) {
+      return res.status(400).json({ message: "Email already registered" });
+    }
+
+    const hashedPassword = await bcrypt.hash(body.password, 10);
+
+    const user = await storage.createUser({
+      email: body.email,
+      password: hashedPassword,
+      name: body.fullName,
+    });
+
+    // Generate slug from org name
+    const slug = body.orgName
+      .toLowerCase()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-|-$/g, '');
+
+    const organization = await storage.createOrganization({
+      name: body.orgName,
+      slug: slug,
+      gstin: body.gstin || null,
+    });
+
+    await storage.createMembership({
+      userId: user.id,
+      orgId: organization.id,
+      role: "owner",
+    });
+
+    const payload = {
+      userId: user.id,
+      email: user.email,
+      currentOrgId: organization.id,
+    };
+
+    const accessToken = generateAccessToken(payload);
+    const refreshToken = generateRefreshToken(payload);
+    const tokenHash = hashToken(refreshToken);
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    await storage.storeRefreshToken(user.id, tokenHash, expiresAt);
+
+    res.cookie("refreshToken", refreshToken, {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+      sameSite: "strict",
+      maxAge: 7 * 24 * 60 * 60 * 1000,
+    });
+
+    res.status(201).json({
+      user: {
+        id: user.id,
+        email: user.email,
+        fullName: user.name,
+        currentOrgId: organization.id,
+      },
+      accessToken,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Register error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
 });
 
 router.post("/signup", async (req, res) => {

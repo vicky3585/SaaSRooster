@@ -17,13 +17,14 @@ export default function Signup() {
   const [password, setPassword] = useState('');
   const [fullName, setFullName] = useState('');
   const [orgName, setOrgName] = useState('');
+  const [gstin, setGstin] = useState('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
 
     try {
-      await signup(email, password, fullName, orgName);
+      await signup(email, password, fullName, orgName, gstin);
       setLocation('/');
     } catch (error: any) {
       toast({
@@ -92,6 +93,23 @@ export default function Signup() {
                 required
                 data-testid="input-orgname"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="gstin" data-testid="label-gstin">
+                GST Number (Optional)
+              </Label>
+              <Input
+                id="gstin"
+                type="text"
+                placeholder="22AAAAA0000A1Z5"
+                value={gstin}
+                onChange={(e) => setGstin(e.target.value.toUpperCase())}
+                maxLength={15}
+                data-testid="input-gstin"
+              />
+              <p className="text-xs text-muted-foreground">
+                15-character GST identification number
+              </p>
             </div>
             <Button
               type="submit"

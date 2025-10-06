@@ -12,7 +12,7 @@ interface AuthContextType {
   user: User | null;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  signup: (email: string, password: string, fullName: string, orgName: string) => Promise<void>;
+  signup: (email: string, password: string, fullName: string, orgName: string, gstin?: string) => Promise<void>;
   logout: () => Promise<void>;
   switchOrg: (orgId: string) => Promise<void>;
   refetch: () => Promise<void>;
@@ -57,10 +57,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const signup = async (email: string, password: string, fullName: string, orgName: string) => {
+  const signup = async (email: string, password: string, fullName: string, orgName: string, gstin?: string) => {
     setIsLoading(true);
     try {
-      const response = await apiRequest('POST', '/api/auth/register', { email, password, fullName, orgName });
+      const response = await apiRequest('POST', '/api/auth/register', { email, password, fullName, orgName, gstin: gstin || '' });
       const data = await response.json();
       setUser(data.user);
     } finally {
