@@ -1,30 +1,30 @@
 # Design Guidelines: Multi-Tenant SaaS Billing + Accounting Portal
 
-## Design Approach: Professional Data-Focused System
+## Design Approach: Data-Focused Professional System
 
-**Selected Framework**: Material Design + Stripe Dashboard aesthetics  
-**Rationale**: Financial applications demand clarity, trust, and efficiency. We're blending Material Design's structured approach with Stripe's refined data presentation for a professional, trustworthy interface.
+**Framework**: Material Design + Stripe Dashboard Aesthetics  
+**Rationale**: Financial applications demand clarity, trust, and efficiency. Material Design's structured patterns combined with Stripe's refined data presentation create a professional, trustworthy interface optimized for complex financial workflows.
 
 **Core Principles**:
-- Data clarity over decoration
-- Trustworthy professionalism
-- Efficient workflows
-- Consistent, predictable patterns
+- Data clarity over decoration - every pixel serves a purpose
+- Trustworthy professionalism through consistent patterns
+- Efficient workflows with minimal cognitive load
+- Predictable interactions for power users
 
 ---
 
 ## Color Palette
 
 ### Light Mode
-- **Primary**: 222 47% 41% (Professional navy blue for trust/stability)
-- **Secondary**: 215 16% 47% (Muted slate for secondary elements)
-- **Success**: 142 71% 45% (Financial green for positive metrics, profits)
-- **Destructive**: 0 72% 51% (Error states, overdue indicators)
-- **Warning**: 38 92% 50% (Alert states, pending approvals)
+- **Primary**: 222 47% 41% (Navy blue - trust, stability)
+- **Secondary**: 215 16% 47% (Slate - secondary actions)
+- **Success**: 142 71% 45% (Financial green - profits, paid status)
+- **Destructive**: 0 72% 51% (Errors, overdue payments)
+- **Warning**: 38 92% 50% (Pending approvals, alerts)
 - **Background**: 0 0% 100% (Clean white)
-- **Card**: 0 0% 98% (Subtle off-white for elevation)
-- **Border**: 214 32% 91% (Light gray borders)
-- **Muted**: 210 40% 96% (Backgrounds for secondary content)
+- **Card**: 0 0% 98% (Subtle elevation)
+- **Border**: 214 32% 91% (Light separators)
+- **Muted**: 210 40% 96% (Secondary backgrounds)
 
 ### Dark Mode
 - **Primary**: 222 47% 65%
@@ -38,202 +38,235 @@
 
 ## Typography
 
-**Font Families**:
-- **Primary**: Inter (Google Fonts) - All UI text, clean and readable at all sizes
-- **Monospace**: 'Courier New' - Invoice numbers, GST numbers, financial codes
+**Fonts** (Google Fonts CDN):
+- **Primary**: Inter - All UI text, optimized for screens
+- **Monospace**: 'Courier New' - Invoice numbers, GST IDs, transaction codes
 
-**Scale**:
-- **Headings**: text-3xl (30px) for page titles, text-2xl (24px) for section headers, text-xl (20px) for card titles
-- **Body**: text-base (16px) for primary content, text-sm (14px) for labels/metadata
-- **Small**: text-xs (12px) for timestamps, helper text, badges
-- **Financial Data**: text-lg (18px) with font-semibold for amounts, font-mono for codes
+**Hierarchy**:
+- **Page Titles**: text-3xl (30px) font-bold
+- **Section Headers**: text-2xl (24px) font-semibold
+- **Card Titles**: text-xl (20px) font-semibold
+- **Body**: text-base (16px) for content, text-sm (14px) for labels
+- **Financial Data**: text-lg (18px) font-semibold for amounts, font-mono for codes
+- **Metadata**: text-xs (12px) for timestamps, helper text
 
 ---
 
 ## Layout System
 
-**Spacing Primitives**: Use Tailwind units of 2, 4, 6, 8, 12, 16  
+**Spacing Units**: 2, 4, 6, 8, 12, 16
 - Component padding: p-4 to p-6
-- Section spacing: space-y-6 to space-y-8
-- Card gaps: gap-4 to gap-6
-- Page margins: px-6 to px-8
+- Section gaps: gap-6 to gap-8  
+- Card spacing: space-y-6
+- Page containers: px-6 to px-8, max-w-7xl mx-auto
 
-**Grid Structure**:
-- Dashboard cards: grid-cols-1 md:grid-cols-2 lg:grid-cols-4
-- Data tables: Full width within max-w-7xl container
-- Forms: Single column max-w-2xl for optimal data entry
-- Reports page: Two-column split (filters + results)
+**Grid Patterns**:
+- Dashboard KPIs: grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6
+- Data tables: Full-width within container
+- Forms: Single column max-w-2xl for data entry
+- Reports: Two-column (filters + results)
 
 ---
 
 ## Component Library
 
 ### Navigation
-**Left Sidebar** (fixed, 240px width on desktop):
-- Dark background (slate-900 in light mode, slate-950 in dark)
-- Logo at top with organization name below
-- Menu items with icons (Heroicons outline), text-sm
-- Active state: bg-primary with rounded-md, text-white
-- Hover: bg-slate-800 transition
-- Collapsible to icon-only on tablet
-- Organization switcher dropdown at top
+
+**Left Sidebar** (fixed, 256px desktop):
+- Dark slate-900 background with logo at top
+- Organization switcher dropdown below logo
+- Menu items: Heroicons outline icons + text-sm labels
+- Active state: bg-primary rounded-md text-white
+- Hover: bg-slate-800 transition-colors duration-150
+- Collapses to icon-only on tablet
 
 **Top Bar**:
-- Fixed, backdrop-blur-sm with border-b
-- Right side: notifications bell, user avatar dropdown
-- Page title/breadcrumbs on left (mobile) or hidden when sidebar visible
+- Fixed with backdrop-blur-sm border-b
+- Breadcrumbs/page title (hidden when sidebar visible)
+- Right: Notification bell icon + user avatar dropdown
 
 ### Dashboard Cards
-**KPI Cards** (Revenue, Expenses, Profit, Outstanding):
-- White/card background with border
-- Icon in colored circle (primary/success/destructive tint)
-- Large number: text-3xl font-bold
+
+**KPI Cards**:
+- White/card background, border, rounded-lg shadow-sm
+- Colored icon circle (primary/success/destructive tint)
+- Value: text-3xl font-bold
 - Label: text-sm text-muted-foreground
-- Trend indicator: small badge with ↑/↓ and percentage
-- Height: h-32, rounded-lg shadow-sm
+- Trend badge: Small pill with ↑/↓ + percentage change
+- Height: h-32, responsive padding p-6
 
-### Charts (Recharts)
-**Bar Chart** (Revenue vs Expenses):
-- Two-tone bars: primary for revenue, destructive for expenses
-- Grid lines: stroke-muted, strokeDasharray="3 3"
-- Tooltip: White card with shadow-md
-- Height: h-80, responsive width
+**Quick Actions Card**:
+- Grid of 4 large icon buttons
+- Each button: Column layout with icon + label
+- Actions: Create Invoice, Add Customer, Record Payment, New Expense
+- Hover: bg-accent transition
 
-**Line Chart** (Profit Trend):
-- Smooth curve with gradient fill
-- Area fill: primary color with 20% opacity
-- Dot markers on data points
-- X-axis: Monthly labels (Jan, Feb, Mar...)
+### Data Tables
 
-**Pie Chart** (Customer Distribution):
-- 5-6 segment colors from primary palette
-- Legend: right side on desktop, bottom on mobile
-- Center label showing total count
-
-### Tables (Invoices, Customers, Items)
+**Structure**:
 - Striped rows with hover:bg-muted/50
-- Header: bg-muted font-semibold text-sm
-- Cell padding: px-4 py-3
-- Status badges: rounded-full px-2.5 py-0.5 text-xs (paid: green, overdue: red, draft: gray)
-- Actions column: ⋮ dropdown menu (Edit, View, Delete)
-- Pagination: Bottom center with page numbers + Previous/Next
-- Row height: h-12 for comfortable touch targets
+- Header: bg-muted font-semibold text-sm uppercase tracking-wide
+- Cell padding: px-4 py-3, align-middle
+- Row height: h-12 for touch targets
+- Sortable columns with sort indicators
 
-### Forms
-**Input Fields**:
-- Border: border-input rounded-md
-- Padding: px-3 py-2
-- Focus: ring-2 ring-primary
-- Labels: text-sm font-medium mb-1.5
-- Helper text: text-xs text-muted-foreground mt-1
-- Error state: border-destructive with error message
-
-**Select/Dropdown**:
-- Chevron icon on right
-- Dropdown menu: shadow-md border with max-h-60 overflow-y-auto
-
-**Date Picker**:
-- Calendar icon button
-- Popover calendar with month/year navigation
-- Selected date: bg-primary text-white
-
-### Buttons
-**Primary**: bg-primary text-white hover:bg-primary/90 px-4 py-2 rounded-md  
-**Secondary**: bg-secondary text-secondary-foreground  
-**Outline**: border border-input bg-background hover:bg-accent  
-**Ghost**: hover:bg-accent (for icon buttons, table actions)  
-**Destructive**: bg-destructive text-destructive-foreground
-
-Size variants: sm (px-3 py-1.5 text-sm), default (px-4 py-2), lg (px-6 py-3 text-lg)
-
-### Dialogs & Modals
-- Overlay: bg-black/50 backdrop-blur-sm
-- Content: bg-background rounded-lg shadow-lg max-w-2xl
-- Header: border-b pb-4 with close X button
-- Footer: border-t pt-4 with action buttons (Cancel + Confirm)
-- Padding: p-6
-
-### Badges & Status Indicators
+**Status Badges**:
 - Paid: bg-green-100 text-green-800 (dark: bg-green-900/30 text-green-400)
 - Overdue: bg-red-100 text-red-800
 - Draft: bg-gray-100 text-gray-800
 - Pending: bg-yellow-100 text-yellow-800
-- Rounded-full, px-2 py-1, text-xs font-medium
+- Style: rounded-full px-2.5 py-0.5 text-xs font-medium
+
+**Actions Column**:
+- ⋮ icon button (ghost variant)
+- Dropdown menu: Edit, View, Download, Delete options
+- Menu: bg-background shadow-lg border rounded-md
+
+**Pagination**:
+- Bottom center alignment
+- Previous/Next buttons + page numbers
+- Active page: bg-primary text-white
+- Shows "X-Y of Z results"
+
+### Charts (Recharts)
+
+**Revenue vs Expenses Bar Chart**:
+- Grouped bars: primary (revenue) + destructive (expenses)
+- Grid: stroke-muted strokeDasharray="3 3"
+- Tooltip: White card shadow-md with formatted values
+- Height: h-80, responsive container
+
+**Profit Trend Line Chart**:
+- Smooth curve with area gradient fill (primary @ 20% opacity)
+- Dot markers on data points
+- X-axis: Monthly labels, Y-axis: Currency formatted
+
+**Customer Distribution Pie**:
+- 6-color palette from primary/secondary variants
+- Legend: Right side (desktop), bottom (mobile)
+- Center label: Total customer count
+
+### Forms
+
+**Input Fields**:
+- Border: border-input rounded-md
+- Padding: px-3 py-2, text-base
+- Focus: ring-2 ring-primary ring-offset-2
+- Labels: text-sm font-medium mb-1.5
+- Helper text: text-xs text-muted-foreground mt-1
+- Error: border-destructive + error message below
+
+**Select/Dropdowns**:
+- Chevron-down icon right-aligned
+- Menu: shadow-md border max-h-60 overflow-auto
+- Selected: bg-muted
+
+**Date Picker**:
+- Calendar icon trigger button
+- Popover calendar with month/year navigation
+- Selected date: bg-primary text-white rounded-md
+
+**Invoice Line Items Table**:
+- Editable rows with add/remove buttons
+- Columns: Item, Description, Quantity, Rate, Tax, Amount
+- Auto-calculation on value changes
+- Subtotal/Tax/Total footer section
+
+### Buttons
+
+**Variants**:
+- Primary: bg-primary text-white hover:bg-primary/90
+- Secondary: bg-secondary text-secondary-foreground
+- Outline: border border-input bg-background hover:bg-accent
+- Ghost: hover:bg-accent (icon buttons, table actions)
+- Destructive: bg-destructive text-destructive-foreground
+
+**Sizes**: sm (px-3 py-1.5 text-sm), default (px-4 py-2), lg (px-6 py-3)
+
+### Dialogs & Modals
+
+- Overlay: bg-black/50 backdrop-blur-sm
+- Content: bg-background rounded-lg shadow-xl max-w-2xl p-6
+- Header: text-xl font-semibold with close X button
+- Body: space-y-4 content
+- Footer: border-t pt-4 with Cancel (outline) + Confirm (primary) buttons
 
 ### Toast Notifications
-- Bottom-right corner (fixed)
-- Success: border-l-4 border-green-500
-- Error: border-l-4 border-red-500
-- Auto-dismiss after 5s with progress bar
-- Close button (X icon)
+
+- Position: Fixed bottom-right
+- Success: border-l-4 border-success with checkmark icon
+- Error: border-l-4 border-destructive with alert icon
+- Auto-dismiss: 5s with animated progress bar
+- Close button top-right
 
 ---
 
 ## Page-Specific Layouts
 
 ### Dashboard
-- Page title: "Dashboard" text-3xl font-bold mb-6
-- KPI cards grid (4 columns on desktop)
-- Below: Two charts side-by-side (Revenue vs Expenses + Profit Trend)
-- Third row: Customer Distribution pie chart + Recent Activity list card
-- Quick Actions card: 4 large icon buttons (Create Invoice, Add Customer, Record Payment, New Expense)
+- Grid of 4 KPI cards (Revenue, Expenses, Profit, Outstanding)
+- Two-chart row: Revenue vs Expenses bar + Profit trend line
+- Bottom row: Customer distribution pie + Recent Activity timeline card
+- Quick Actions card: 4 prominent action buttons
 
-### Invoice List/Table Pages
-- Search bar + Filters row (Status, Date range, Customer)
-- Table with sortable columns
-- Empty state: Centered illustration with "No invoices yet" + CTA button
+### Invoice Management
+- Top: Search bar + Status filter pills + Date range picker
+- Table: Sortable columns (Invoice #, Customer, Date, Amount, Status)
+- Empty state: Centered illustration + "Create your first invoice" CTA
+- Batch actions: Select multiple for bulk email/download
 
-### Invoice Create/Edit Form
-- Two-column layout on desktop
-- Left: Invoice details (customer, date, due date, terms)
-- Right: Preview panel (read-only, updates live)
-- Line items table: Add/remove rows dynamically
-- Tax calculation section: Shows CGST/SGST/IGST breakdown
-- Footer: Total in large text-2xl font-bold
-- Actions: Save as Draft, Send Invoice (primary button)
+### Invoice Create/Edit
+- Two-column desktop layout
+- Left: Form fields (customer select, dates, terms, notes)
+- Right: Live preview panel (read-only, mirrors left changes)
+- Center: Line items editable table
+- Tax breakdown: CGST/SGST/IGST calculation display
+- Footer: Grand total (text-2xl font-bold) + Save Draft/Send buttons
 
-### Reports Page
-- Left sidebar: Report type selector (cards with icons)
-- Main area: Date range picker + filters
-- Export buttons: Download PDF, Export CSV/JSON
-- Results table or chart based on report type
-- Print-optimized layout
+### Reports
+- Left: Report type cards (GST Returns, P&L, Cash Flow, etc.)
+- Main: Date range + filter controls
+- Results: Table or chart based on type
+- Export buttons: PDF, CSV, Excel (outline buttons)
+- Print-optimized styles
 
-### Settings Pages
-- Tab navigation (Company, Users, Billing, Preferences)
-- Form sections with clear headings
-- Logo upload: Drag-drop zone with preview
-- Save changes button: Sticky at bottom on scroll
+### Settings
+- Tab navigation: Company, Users, Tax Settings, Preferences
+- Company: Logo upload (drag-drop 200x80px), business details form
+- Tax Settings: GST registration number, tax rates, HSN codes table
+- Form sections with clear dividers
+- Sticky save button at bottom
 
 ---
 
 ## Images
 
-**Logo Placement**: 
-- Top of left sidebar (200px width)
-- Invoice PDFs (top-left, 150px width)
-- Settings page (profile section, 120px square)
+**Logo Usage**:
+- Left sidebar top: 200px width on white/transparent background
+- Invoice PDFs: Top-left 150px width
+- Settings page: Upload area 200x80px with preview
 
-**Empty States**: Use simple line illustrations (from undraw.co or similar) for:
-- No invoices/customers/items states (center of page)
-- Welcome screen after signup (with mascot/illustration)
-- 404/error pages
+**Empty States**:
+- Centered line illustrations (Undraw.co style)
+- Use for: No invoices, No customers, No transactions
+- Include heading + description + CTA button below
+- 404/Error pages: Friendly illustration with "Return to Dashboard" link
 
-**Hero Image**: None - This is a utility-focused dashboard application. Replace traditional hero with data-rich dashboard immediately after login.
+**No Hero Images**: This is a utility dashboard - users see data-rich dashboard immediately after login, not marketing imagery.
 
 ---
 
 ## Animations
 
-**Minimal Motion**:
-- Page transitions: None (instant)
+**Minimal, Purposeful Motion**:
 - Hover states: transition-colors duration-150
-- Dropdown menus: slide down with duration-200
-- Chart rendering: Recharts default animation (first load only)
-- Skeleton loaders: Shimmer effect for data tables while loading
+- Dropdown menus: Slide down duration-200 ease-out
+- Chart rendering: Recharts default (first load only)
+- Loading: Shimmer skeleton for tables, spinner for actions
+- Page transitions: None (instant, snappy)
 
-**No Animations**: Avoid scroll-triggered effects, parallax, or decorative motion. Keep interface snappy and predictable.
+**Avoid**: Scroll effects, parallax, decorative animations that slow workflows
 
 ---
 
-This design creates a professional, trustworthy financial application optimized for data entry and analysis while maintaining visual clarity and modern aesthetics.
+This design delivers a professional, trustworthy financial platform where clarity, efficiency, and data accuracy are paramount. Every element serves the user's financial management needs with zero decorative bloat.
