@@ -30,14 +30,26 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
+      const token = localStorage.getItem('accessToken');
+      const headers: Record<string, string> = {};
+      
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch('/api/auth/me', {
         credentials: 'include',
+        headers,
       });
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
       } else {
         setUser(null);
+        if (response.status === 401) {
+          localStorage.removeItem('accessToken');
+          setAccessToken(null);
+        }
       }
     } catch (error) {
       setUser(null);
