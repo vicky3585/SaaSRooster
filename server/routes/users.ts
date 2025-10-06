@@ -1,14 +1,14 @@
 import { Router, type RequestHandler } from "express";
 import { storage } from "../storage";
-import { authenticateToken } from "../middleware/auth";
+import { authenticateToken, type AuthRequest } from "../middleware/auth";
 
 const router = Router();
 
 router.use(authenticateToken as RequestHandler);
 
-router.get("/me/memberships", (async (req, res) => {
+router.get("/me/memberships", (async (req: AuthRequest, res) => {
   const userId = req.user!.userId;
-  const memberships = await storage.getMembershipsByUser(userId);
+  const memberships = await storage.getMembershipsByUserId(userId);
   
   const membershipsWithOrgs = await Promise.all(
     memberships.map(async (membership) => {
