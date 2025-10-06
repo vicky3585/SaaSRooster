@@ -81,7 +81,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const switchOrg = async (orgId: string) => {
     setIsLoading(true);
     try {
-      const response = await apiRequest('POST', '/api/auth/switch-org', { orgId });
+      const response = await apiRequest('POST', '/api/auth/switch-org', { organizationId: orgId });
       const data = await response.json();
       setUser(data.user);
     } finally {

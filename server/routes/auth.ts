@@ -96,7 +96,6 @@ router.post("/register", async (req, res) => {
         fullName: user.name,
         currentOrgId: organization.id,
       },
-      accessToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -238,12 +237,10 @@ router.post("/login", async (req, res) => {
     res.json({
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
+        fullName: user.name,
+        currentOrgId: currentOrgId,
       },
-      organizations,
-      currentOrganization: organizations[0],
-      accessToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -334,27 +331,13 @@ router.get("/me", authenticateToken, async (req: AuthRequest, res) => {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const memberships = await storage.getMembershipsByUserId(user.id);
-    const organizations = await Promise.all(
-      memberships.map(async (m) => {
-        const org = await storage.getOrganizationById(m.orgId);
-        return {
-          id: m.orgId,
-          name: org?.name || "",
-          slug: org?.slug || "",
-          role: m.role,
-        };
-      })
-    );
-
     res.json({
       user: {
         id: user.id,
-        name: user.name,
         email: user.email,
+        fullName: user.name,
+        currentOrgId: req.user!.currentOrgId,
       },
-      organizations,
-      currentOrganization: organizations.find((o) => o.id === req.user!.currentOrgId),
     });
   } catch (error) {
     console.error("Get user error:", error);
@@ -403,13 +386,14 @@ router.post("/switch-org", authenticateToken, async (req: AuthRequest, res) => {
 
     const org = await storage.getOrganizationById(body.organizationId);
 
+    const user = await storage.getUserById(req.user!.userId);
+    
     res.json({
-      accessToken,
-      organization: {
-        id: org!.id,
-        name: org!.name,
-        slug: org!.slug,
-        role: membership.role,
+      user: {
+        id: user!.id,
+        email: user!.email,
+        fullName: user!.name,
+        currentOrgId: body.organizationId,
       },
     });
   } catch (error) {

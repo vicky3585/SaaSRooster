@@ -41,6 +41,7 @@ export function OrgSwitcher() {
         title: 'Organization switched',
         description: 'You have successfully switched organizations',
       });
+      window.location.reload();
     } catch (error: any) {
       toast({
         title: 'Failed to switch organization',
