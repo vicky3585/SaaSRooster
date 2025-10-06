@@ -24,7 +24,11 @@ const createCustomerSchema = insertCustomerSchema.extend({
 
 router.get("/", async (req: AuthRequest, res) => {
   try {
-    const customers = await storage.getCustomersByOrg(req.user!.currentOrgId);
+    const orgId = req.user!.currentOrgId;
+    if (!orgId) {
+      return res.status(400).json({ message: "No organization selected" });
+    }
+    const customers = await storage.getCustomersByOrg(orgId);
     res.json(customers);
   } catch (error) {
     console.error("Get customers error:", error);
