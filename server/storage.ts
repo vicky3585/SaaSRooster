@@ -148,7 +148,7 @@ export class DbStorage implements IStorage {
   }
 
   async createOrganization(org: InsertOrganization): Promise<Organization> {
-    const result = await db.insert(organizations).values(org).returning();
+    const result = await db.insert(organizations).values(org as any).returning();
     return result[0];
   }
 
