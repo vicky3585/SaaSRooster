@@ -96,6 +96,7 @@ router.post("/register", async (req, res) => {
         fullName: user.name,
         currentOrgId: organization.id,
       },
+      accessToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -241,6 +242,7 @@ router.post("/login", async (req, res) => {
         fullName: user.name,
         currentOrgId: currentOrgId,
       },
+      accessToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
@@ -395,6 +397,7 @@ router.post("/switch-org", authenticateToken, async (req: AuthRequest, res) => {
         fullName: user!.name,
         currentOrgId: body.organizationId,
       },
+      accessToken,
     });
   } catch (error) {
     if (error instanceof z.ZodError) {
