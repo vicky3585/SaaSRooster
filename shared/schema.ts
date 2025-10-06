@@ -440,6 +440,25 @@ export const subscriptions = pgTable(
   })
 );
 
+// Refresh Tokens
+export const refreshTokens = pgTable(
+  "refresh_tokens",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    tokenHash: text("token_hash").notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at"),
+  },
+  (table) => ({
+    userIdIdx: index("refresh_tokens_user_id_idx").on(table.userId),
+    tokenHashIdx: index("refresh_tokens_token_hash_idx").on(table.tokenHash),
+  })
+);
+
 // Audit Logs
 export const auditLogs = pgTable(
   "audit_logs",
@@ -697,6 +716,8 @@ export type InsertExpense = z.infer<typeof insertExpenseSchema>;
 
 export type StockTransaction = typeof stockTransactions.$inferSelect;
 export type InsertStockTransaction = z.infer<typeof insertStockTransactionSchema>;
+
+export type RefreshToken = typeof refreshTokens.$inferSelect;
 
 export type Plan = typeof plans.$inferSelect;
 export type Subscription = typeof subscriptions.$inferSelect;
