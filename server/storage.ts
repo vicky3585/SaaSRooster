@@ -68,29 +68,43 @@ export interface IStorage {
   getWarehouseById(id: string): Promise<Warehouse | null>;
   createWarehouse(warehouse: InsertWarehouse): Promise<Warehouse>;
   updateWarehouse(id: string, updates: Partial<InsertWarehouse>): Promise<Warehouse | null>;
+  deleteWarehouse(id: string): Promise<boolean>;
   
   getItemsByOrg(orgId: string): Promise<Item[]>;
   getItemById(id: string): Promise<Item | null>;
   createItem(item: InsertItem): Promise<Item>;
   updateItem(id: string, updates: Partial<InsertItem>): Promise<Item | null>;
+  deleteItem(id: string): Promise<boolean>;
   
   getInvoicesByOrg(orgId: string): Promise<Invoice[]>;
   getInvoiceById(id: string): Promise<Invoice | null>;
   createInvoice(invoice: InsertInvoice): Promise<Invoice>;
   updateInvoice(id: string, updates: Partial<InsertInvoice>): Promise<Invoice | null>;
+  deleteInvoice(id: string): Promise<boolean>;
   
   getInvoiceItemsByInvoice(invoiceId: string): Promise<InvoiceItem[]>;
   createInvoiceItem(item: InsertInvoiceItem): Promise<InvoiceItem>;
   deleteInvoiceItemsByInvoice(invoiceId: string): Promise<void>;
   
   getPaymentsByInvoice(invoiceId: string): Promise<Payment[]>;
+  getPaymentById(id: string): Promise<Payment | null>;
   createPayment(payment: InsertPayment): Promise<Payment>;
+  updatePayment(id: string, updates: Partial<InsertPayment>): Promise<Payment | null>;
+  deletePayment(id: string): Promise<boolean>;
   
   getCreditNotesByOrg(orgId: string): Promise<CreditNote[]>;
+  getCreditNoteById(id: string): Promise<CreditNote | null>;
   createCreditNote(creditNote: InsertCreditNote): Promise<CreditNote>;
+  updateCreditNote(id: string, updates: Partial<InsertCreditNote>): Promise<CreditNote | null>;
+  deleteCreditNote(id: string): Promise<boolean>;
   
   getExpensesByOrg(orgId: string): Promise<Expense[]>;
+  getExpenseById(id: string): Promise<Expense | null>;
   createExpense(expense: InsertExpense): Promise<Expense>;
+  updateExpense(id: string, updates: Partial<InsertExpense>): Promise<Expense | null>;
+  deleteExpense(id: string): Promise<boolean>;
+  
+  getStockTransactionsByItem(itemId: string): Promise<StockTransaction[]>;
   
   createStockTransaction(txn: InsertStockTransaction): Promise<StockTransaction>;
   
@@ -139,10 +153,13 @@ export class DbStorage implements IStorage {
   }
 
   async updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization | null> {
-    const cleanUpdates: any = { ...updates, updatedAt: new Date() };
+    const updateData: any = { ...updates, updatedAt: new Date() };
+    if (updateData.bankDetails) {
+      updateData.bankDetails = JSON.parse(JSON.stringify(updateData.bankDetails));
+    }
     const result = await db
       .update(organizations)
-      .set(cleanUpdates)
+      .set(updateData)
       .where(eq(organizations.id, id))
       .returning();
     return result[0] || null;
@@ -226,6 +243,11 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
 
+  async deleteWarehouse(id: string): Promise<boolean> {
+    const result = await db.delete(warehouses).where(eq(warehouses.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getItemsByOrg(orgId: string): Promise<Item[]> {
     return await db.select().from(items).where(eq(items.orgId, orgId));
   }
@@ -247,6 +269,11 @@ export class DbStorage implements IStorage {
       .where(eq(items.id, id))
       .returning();
     return result[0] || null;
+  }
+
+  async deleteItem(id: string): Promise<boolean> {
+    const result = await db.delete(items).where(eq(items.id, id)).returning();
+    return result.length > 0;
   }
 
   async getInvoicesByOrg(orgId: string): Promise<Invoice[]> {
@@ -272,6 +299,11 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
 
+  async deleteInvoice(id: string): Promise<boolean> {
+    const result = await db.delete(invoices).where(eq(invoices.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getInvoiceItemsByInvoice(invoiceId: string): Promise<InvoiceItem[]> {
     return await db.select().from(invoiceItems).where(eq(invoiceItems.invoiceId, invoiceId));
   }
@@ -289,13 +321,37 @@ export class DbStorage implements IStorage {
     return await db.select().from(payments).where(eq(payments.invoiceId, invoiceId));
   }
 
+  async getPaymentById(id: string): Promise<Payment | null> {
+    const result = await db.select().from(payments).where(eq(payments.id, id)).limit(1);
+    return result[0] || null;
+  }
+
   async createPayment(payment: InsertPayment): Promise<Payment> {
     const result = await db.insert(payments).values(payment).returning();
     return result[0];
   }
 
+  async updatePayment(id: string, updates: Partial<InsertPayment>): Promise<Payment | null> {
+    const result = await db
+      .update(payments)
+      .set(updates)
+      .where(eq(payments.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deletePayment(id: string): Promise<boolean> {
+    const result = await db.delete(payments).where(eq(payments.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getCreditNotesByOrg(orgId: string): Promise<CreditNote[]> {
     return await db.select().from(creditNotes).where(eq(creditNotes.orgId, orgId));
+  }
+
+  async getCreditNoteById(id: string): Promise<CreditNote | null> {
+    const result = await db.select().from(creditNotes).where(eq(creditNotes.id, id)).limit(1);
+    return result[0] || null;
   }
 
   async createCreditNote(creditNote: InsertCreditNote): Promise<CreditNote> {
@@ -303,13 +359,50 @@ export class DbStorage implements IStorage {
     return result[0];
   }
 
+  async updateCreditNote(id: string, updates: Partial<InsertCreditNote>): Promise<CreditNote | null> {
+    const result = await db
+      .update(creditNotes)
+      .set(updates)
+      .where(eq(creditNotes.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteCreditNote(id: string): Promise<boolean> {
+    const result = await db.delete(creditNotes).where(eq(creditNotes.id, id)).returning();
+    return result.length > 0;
+  }
+
   async getExpensesByOrg(orgId: string): Promise<Expense[]> {
     return await db.select().from(expenses).where(eq(expenses.orgId, orgId));
+  }
+
+  async getExpenseById(id: string): Promise<Expense | null> {
+    const result = await db.select().from(expenses).where(eq(expenses.id, id)).limit(1);
+    return result[0] || null;
   }
 
   async createExpense(expense: InsertExpense): Promise<Expense> {
     const result = await db.insert(expenses).values(expense).returning();
     return result[0];
+  }
+
+  async updateExpense(id: string, updates: Partial<InsertExpense>): Promise<Expense | null> {
+    const result = await db
+      .update(expenses)
+      .set(updates)
+      .where(eq(expenses.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteExpense(id: string): Promise<boolean> {
+    const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getStockTransactionsByItem(itemId: string): Promise<StockTransaction[]> {
+    return await db.select().from(stockTransactions).where(eq(stockTransactions.itemId, itemId));
   }
 
   async createStockTransaction(txn: InsertStockTransaction): Promise<StockTransaction> {
