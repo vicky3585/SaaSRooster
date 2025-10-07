@@ -36,6 +36,8 @@ import aiRoutes from "./routes/ai";
 import dashboardRoutes from "./routes/dashboard";
 import adminRoutes from "./routes/admin";
 import adminAuthRoutes from "./routes/adminAuth";
+import subscriptionPlansRoutes from "./routes/subscriptionPlans";
+import platformSettingsRoutes from "./routes/platformSettings";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -43,6 +45,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Admin routes (no subscription check)
   app.use("/api/admin/auth", adminAuthRoutes);
+  app.use("/api/admin/subscription-plans", subscriptionPlansRoutes);
+  app.use("/api/admin/settings", platformSettingsRoutes);
   app.use("/api/admin", adminRoutes);
   
   // Auth routes (no subscription check for login/signup)
