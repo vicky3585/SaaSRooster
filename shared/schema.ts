@@ -572,6 +572,7 @@ export const sequenceCounters = pgTable(
       .references(() => organizations.id, { onDelete: "cascade" }),
     entityType: text("entity_type").notNull(), // "invoice", "credit_note", etc.
     fiscalYear: text("fiscal_year").notNull(), // "2024-25"
+    prefix: text("prefix").default("INV").notNull(), // Invoice prefix
     currentValue: integer("current_value").default(0).notNull(),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
@@ -1496,7 +1497,9 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   sentAt: true,
   invoiceDate: true,
   dueDate: true,
+  invoiceNumber: true,
 }).extend({
+  invoiceNumber: z.string().optional(),
   invoiceDate: z.string().transform(val => new Date(val)),
   dueDate: z.string().transform(val => new Date(val)),
   cgst: z.string().optional().default("0"),

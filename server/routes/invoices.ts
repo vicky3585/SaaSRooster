@@ -4,6 +4,7 @@ import { storage } from "../storage";
 import { insertInvoiceSchema, type Invoice } from "@shared/schema";
 import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { validateOrgAccess } from "../middleware/orgIsolation";
+import { generateInvoiceNumber, previewNextInvoiceNumber } from "../services/invoiceNumbering";
 
 const router = Router();
 
@@ -20,6 +21,20 @@ router.get("/", async (req: AuthRequest, res) => {
     res.json(invoices);
   } catch (error) {
     console.error("Get invoices error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/next-number", async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.currentOrgId;
+    if (!orgId) {
+      return res.status(400).json({ message: "No organization selected" });
+    }
+    const nextNumber = await previewNextInvoiceNumber(orgId);
+    res.json({ invoiceNumber: nextNumber });
+  } catch (error) {
+    console.error("Get next invoice number error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
@@ -45,9 +60,18 @@ router.get("/:id", async (req: AuthRequest, res) => {
 
 router.post("/", async (req: AuthRequest, res) => {
   try {
+    const orgId = req.user!.currentOrgId;
+    if (!orgId) {
+      return res.status(400).json({ message: "No organization selected" });
+    }
+    
+    // Generate invoice number if not provided
+    const invoiceNumber = req.body.invoiceNumber || await generateInvoiceNumber(orgId);
+    
     const body = insertInvoiceSchema.parse({
       ...req.body,
-      orgId: req.user!.currentOrgId,
+      invoiceNumber,
+      orgId,
       createdBy: req.user!.userId,
     });
     
