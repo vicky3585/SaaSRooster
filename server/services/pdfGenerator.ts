@@ -141,15 +141,25 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
   const html = generateInvoiceHTML(data);
   
+  console.log('Launching Puppeteer browser...');
   const browser = await puppeteer.launch({
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox'],
+    args: [
+      '--no-sandbox', 
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-gpu'
+    ],
   });
 
   try {
+    console.log('Creating new page...');
     const page = await browser.newPage();
+    
+    console.log('Setting HTML content...');
     await page.setContent(html, { waitUntil: 'networkidle0' });
     
+    console.log('Generating PDF...');
     const pdfBuffer = await page.pdf({
       format: 'A4',
       printBackground: true,
@@ -161,8 +171,13 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
       },
     });
 
+    console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
     return Buffer.from(pdfBuffer);
+  } catch (error) {
+    console.error('Error generating PDF:', error);
+    throw error;
   } finally {
     await browser.close();
+    console.log('Browser closed');
   }
 }

@@ -83,7 +83,9 @@ export async function sendInvoiceEmail(
     const { subject, body } = await generateEmailContent(data);
 
     // Generate PDF attachment
+    console.log('Generating PDF for invoice:', invoice.invoiceNumber);
     const pdfBuffer = await generateInvoicePDF(data);
+    console.log('PDF generated, size:', pdfBuffer.length, 'bytes');
 
     // Using verified domain hugenetwork.in
     const fromEmail = 'invoices@hugenetwork.in';
@@ -102,7 +104,7 @@ export async function sendInvoiceEmail(
       attachments: [
         {
           filename: `invoice-${invoice.invoiceNumber}.pdf`,
-          content: pdfBuffer.toString('base64'),
+          content: pdfBuffer,
         }
       ],
     });
