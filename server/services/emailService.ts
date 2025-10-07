@@ -87,12 +87,16 @@ export async function sendInvoiceEmail(
     const fromEmail = 'invoices@hugenetwork.in';
     const fromName = organization.name || 'Invoice';
 
+    // Only use replyTo if it's from the verified domain
+    // If org email is gmail/yahoo/etc, don't set replyTo to avoid Resend validation error
+    const isVerifiedDomain = organization.email?.endsWith('@hugenetwork.in');
+    
     const result = await resend.emails.send({
       from: `${fromName} <${fromEmail}>`,
       to: customer.email,
       subject: subject,
       html: emailBody,
-      replyTo: organization.email || undefined,
+      replyTo: (isVerifiedDomain && organization.email) ? organization.email : undefined,
     });
 
     if (result.error) {
