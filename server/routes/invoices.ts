@@ -151,28 +151,50 @@ router.post("/", async (req: AuthRequest, res) => {
       return res.status(400).json({ message: "No organization selected" });
     }
     
-    // Generate invoice number if not provided
-    const invoiceNumber = req.body.invoiceNumber || await generateInvoiceNumber(orgId);
-    
     // Extract items from request body
     const { items: invoiceItemsData, ...invoiceData } = req.body;
     
-    const body = insertInvoiceSchema.parse({
-      ...invoiceData,
-      invoiceNumber,
-      orgId,
-      createdBy: req.user!.userId,
-    });
+    // Retry logic for duplicate invoice numbers
+    let invoice;
+    let retries = 0;
+    const maxRetries = 3;
     
-    // Create the invoice
-    const invoice = await storage.createInvoice(body);
+    while (retries < maxRetries) {
+      try {
+        // Generate invoice number if not provided
+        const invoiceNumber = req.body.invoiceNumber || await generateInvoiceNumber(orgId);
+        
+        const body = insertInvoiceSchema.parse({
+          ...invoiceData,
+          invoiceNumber,
+          orgId,
+          createdBy: req.user!.userId,
+        });
+        
+        // Create the invoice
+        invoice = await storage.createInvoice(body);
+        break; // Success, exit retry loop
+      } catch (err: any) {
+        // Check if it's a duplicate key error
+        if (err.code === '23505' && err.constraint === 'invoices_org_id_invoice_number_unique') {
+          retries++;
+          if (retries >= maxRetries) {
+            throw new Error("Failed to generate unique invoice number after multiple attempts");
+          }
+          // Retry with a new invoice number
+          continue;
+        }
+        // If it's not a duplicate error, throw it
+        throw err;
+      }
+    }
     
     // Create invoice items if provided
     if (invoiceItemsData && Array.isArray(invoiceItemsData)) {
       for (const item of invoiceItemsData) {
         await storage.createInvoiceItem({
           orgId,
-          invoiceId: invoice.id,
+          invoiceId: invoice!.id,
           itemId: item.itemId || null,
           description: item.description,
           hsnCode: item.hsnCode || "",
