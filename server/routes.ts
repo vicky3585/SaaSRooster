@@ -36,45 +36,54 @@ import aiRoutes from "./routes/ai";
 import dashboardRoutes from "./routes/dashboard";
 import adminRoutes from "./routes/admin";
 import adminAuthRoutes from "./routes/adminAuth";
+import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
   
+  // Admin routes (no subscription check)
   app.use("/api/admin/auth", adminAuthRoutes);
   app.use("/api/admin", adminRoutes);
-  app.use("/api/dashboard", dashboardRoutes);
+  
+  // Auth routes (no subscription check for login/signup)
   app.use("/api/auth", authRoutes);
+  
+  // Apply trial status checker to all org routes
+  app.use("/api", checkTrialStatus);
+  
+  // Protected org routes with subscription requirement
+  app.use("/api/dashboard", requireActiveSubscription, dashboardRoutes);
   app.use("/api/users", usersRoutes);
-  app.use("/api/customers", customersRoutes);
-  app.use("/api/vendors", vendorsRoutes);
-  app.use("/api/invoices", invoicesRoutes);
-  app.use("/api/warehouses", warehousesRoutes);
-  app.use("/api/items", itemsRoutes);
-  app.use("/api/stock-transactions", stockTransactionsRoutes);
-  app.use("/api/expenses", expensesRoutes);
-  app.use("/api/memberships", membershipsRoutes);
-  app.use("/api/organizations", organizationsRoutes);
-  app.use("/api/org-gstins", orgGstinsRoutes);
-  app.use("/api/financial-years", financialYearsRoutes);
-  app.use("/api/units", unitsRoutes);
-  app.use("/api/gst-rates", gstRatesRoutes);
-  app.use("/api/price-lists", priceListsRoutes);
-  app.use("/api/leads", leadsRoutes);
-  app.use("/api/deals", dealsRoutes);
-  app.use("/api/activities", activitiesRoutes);
-  app.use("/api/tasks", tasksRoutes);
-  app.use("/api/accounts", accountsRoutes);
-  app.use("/api/contacts", contactsRoutes);
-  app.use("/api/deal-stages", dealStagesRoutes);
-  app.use("/api/chart-of-accounts", chartOfAccountsRoutes);
-  app.use("/api/journals", journalsRoutes);
-  app.use("/api/tickets", ticketsRoutes);
-  app.use("/api/teams", teamsRoutes);
-  app.use("/api/notes", notesRoutes);
-  app.use("/api/attachments", attachmentsRoutes);
-  app.use("/api/recurring-invoices", recurringInvoicesRoutes);
-  app.use("/api/search", searchRoutes);
-  app.use("/api/ai", aiRoutes);
+  app.use("/api/customers", requireActiveSubscription, customersRoutes);
+  app.use("/api/vendors", requireActiveSubscription, vendorsRoutes);
+  app.use("/api/invoices", requireActiveSubscription, invoicesRoutes);
+  app.use("/api/warehouses", requireActiveSubscription, warehousesRoutes);
+  app.use("/api/items", requireActiveSubscription, itemsRoutes);
+  app.use("/api/stock-transactions", requireActiveSubscription, stockTransactionsRoutes);
+  app.use("/api/expenses", requireActiveSubscription, expensesRoutes);
+  app.use("/api/memberships", membershipsRoutes); // No subscription check for memberships
+  app.use("/api/organizations", organizationsRoutes); // No subscription check for org management
+  app.use("/api/org-gstins", requireActiveSubscription, orgGstinsRoutes);
+  app.use("/api/financial-years", requireActiveSubscription, financialYearsRoutes);
+  app.use("/api/units", requireActiveSubscription, unitsRoutes);
+  app.use("/api/gst-rates", requireActiveSubscription, gstRatesRoutes);
+  app.use("/api/price-lists", requireActiveSubscription, priceListsRoutes);
+  app.use("/api/leads", requireActiveSubscription, leadsRoutes);
+  app.use("/api/deals", requireActiveSubscription, dealsRoutes);
+  app.use("/api/activities", requireActiveSubscription, activitiesRoutes);
+  app.use("/api/tasks", requireActiveSubscription, tasksRoutes);
+  app.use("/api/accounts", requireActiveSubscription, accountsRoutes);
+  app.use("/api/contacts", requireActiveSubscription, contactsRoutes);
+  app.use("/api/deal-stages", requireActiveSubscription, dealStagesRoutes);
+  app.use("/api/chart-of-accounts", requireActiveSubscription, chartOfAccountsRoutes);
+  app.use("/api/journals", requireActiveSubscription, journalsRoutes);
+  app.use("/api/tickets", requireActiveSubscription, ticketsRoutes);
+  app.use("/api/teams", requireActiveSubscription, teamsRoutes);
+  app.use("/api/notes", requireActiveSubscription, notesRoutes);
+  app.use("/api/attachments", requireActiveSubscription, attachmentsRoutes);
+  app.use("/api/recurring-invoices", requireActiveSubscription, recurringInvoicesRoutes);
+  app.use("/api/search", requireActiveSubscription, searchRoutes);
+  app.use("/api/ai", requireActiveSubscription, aiRoutes);
 
   const httpServer = createServer(app);
 
