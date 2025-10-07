@@ -475,7 +475,12 @@ export default function Inventory() {
                           <FormItem>
                             <FormLabel>Initial Stock Quantity</FormLabel>
                             <FormControl>
-                              <Input type="number" {...field} data-testid="input-item-stock-quantity" />
+                              <Input 
+                                type="number" 
+                                {...field} 
+                                onChange={(e) => field.onChange(e.target.value === "" ? 0 : parseInt(e.target.value))}
+                                data-testid="input-item-stock-quantity" 
+                              />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
