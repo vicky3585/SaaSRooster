@@ -13,6 +13,7 @@ import {
   UserCircle,
   Briefcase,
   BookOpen,
+  Headphones,
 } from "lucide-react";
 import {
   Sidebar,
@@ -72,6 +73,11 @@ const crmItems = [
     title: "Customers",
     url: "/customers",
     icon: Users,
+  },
+  {
+    title: "Tickets",
+    url: "/tickets",
+    icon: Headphones,
   },
 ];
 
