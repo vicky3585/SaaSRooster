@@ -15,6 +15,17 @@ import leadsRoutes from "./routes/leads";
 import dealsRoutes from "./routes/deals";
 import activitiesRoutes from "./routes/activities";
 import tasksRoutes from "./routes/tasks";
+import accountsRoutes from "./routes/accounts";
+import contactsRoutes from "./routes/contacts";
+import dealStagesRoutes from "./routes/dealStages";
+import chartOfAccountsRoutes from "./routes/chartOfAccounts";
+import journalsRoutes from "./routes/journals";
+import ticketsRoutes from "./routes/tickets";
+import teamsRoutes from "./routes/teams";
+import notesRoutes from "./routes/notes";
+import attachmentsRoutes from "./routes/attachments";
+import recurringInvoicesRoutes from "./routes/recurringInvoices";
+import searchRoutes from "./routes/search";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -33,6 +44,17 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/deals", dealsRoutes);
   app.use("/api/activities", activitiesRoutes);
   app.use("/api/tasks", tasksRoutes);
+  app.use("/api/accounts", accountsRoutes);
+  app.use("/api/contacts", contactsRoutes);
+  app.use("/api/deal-stages", dealStagesRoutes);
+  app.use("/api/chart-of-accounts", chartOfAccountsRoutes);
+  app.use("/api/journals", journalsRoutes);
+  app.use("/api/tickets", ticketsRoutes);
+  app.use("/api/teams", teamsRoutes);
+  app.use("/api/notes", notesRoutes);
+  app.use("/api/attachments", attachmentsRoutes);
+  app.use("/api/recurring-invoices", recurringInvoicesRoutes);
+  app.use("/api/search", searchRoutes);
 
   const httpServer = createServer(app);
 
