@@ -318,11 +318,70 @@ export default function Inventory() {
     return warehouse?.name || "Unknown Warehouse";
   };
 
+  // Calculate summary stats
+  const totalItems = items.length;
+  const lowStockItems = items.filter(item => item.stockQuantity <= item.lowStockThreshold).length;
+  const totalInventoryValue = items.reduce((sum, item) => 
+    sum + (parseFloat(item.price) * item.stockQuantity), 0
+  );
+  const totalWarehouses = warehouses.length;
+
   return (
     <div className="p-6 space-y-6" data-testid="page-inventory">
       <div>
         <h1 className="text-3xl font-bold">Inventory Management</h1>
         <p className="text-muted-foreground mt-1">Manage your items, warehouses, and stock levels</p>
+      </div>
+
+      {/* Summary Stats */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-blue-500/10 text-blue-500 rounded-md">
+              <Package className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{totalItems}</p>
+              <p className="text-sm text-muted-foreground">Total Items</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-red-500/10 text-red-500 rounded-md">
+              <AlertTriangle className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{lowStockItems}</p>
+              <p className="text-sm text-muted-foreground">Low Stock Alerts</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-green-500/10 text-green-500 rounded-md">
+              <TrendingUp className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">₹{totalInventoryValue.toLocaleString('en-IN')}</p>
+              <p className="text-sm text-muted-foreground">Inventory Value</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6">
+          <div className="flex items-center gap-4">
+            <div className="p-3 bg-purple-500/10 text-purple-500 rounded-md">
+              <WarehouseIcon className="w-6 h-6" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold">{totalWarehouses}</p>
+              <p className="text-sm text-muted-foreground">Warehouses</p>
+            </div>
+          </div>
+        </Card>
       </div>
 
       <Tabs defaultValue="items" className="space-y-4">
