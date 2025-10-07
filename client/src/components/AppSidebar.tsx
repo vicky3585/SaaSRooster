@@ -11,6 +11,8 @@ import {
   ChevronDown,
   Target,
   UserCircle,
+  Briefcase,
+  BookOpen,
 } from "lucide-react";
 import {
   Sidebar,
@@ -52,6 +54,11 @@ const crmItems = [
     icon: Target,
   },
   {
+    title: "Deals",
+    url: "/deals",
+    icon: Briefcase,
+  },
+  {
     title: "Accounts",
     url: "/accounts",
     icon: Building2,
@@ -78,6 +85,11 @@ const billingItems = [
     title: "Expenses",
     url: "/expenses",
     icon: TrendingDown,
+  },
+  {
+    title: "Chart of Accounts",
+    url: "/chart-of-accounts",
+    icon: BookOpen,
   },
 ];
 

@@ -21,6 +21,8 @@ import Settings from "@/pages/Settings";
 import Leads from "@/pages/Leads";
 import Accounts from "@/pages/Accounts";
 import Contacts from "@/pages/Contacts";
+import Deals from "@/pages/Deals";
+import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -53,6 +55,8 @@ function AuthenticatedRouter() {
       <Route path="/leads" component={() => <ProtectedRoute component={Leads} />} />
       <Route path="/accounts" component={() => <ProtectedRoute component={Accounts} />} />
       <Route path="/contacts" component={() => <ProtectedRoute component={Contacts} />} />
+      <Route path="/deals" component={() => <ProtectedRoute component={Deals} />} />
+      <Route path="/chart-of-accounts" component={() => <ProtectedRoute component={ChartOfAccounts} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
