@@ -49,7 +49,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, Customer } from "@shared/schema";
 import { format } from "date-fns";
-import { INDIAN_STATES, formatStateDisplay, isIntraStateTransaction, getStateCode } from "@shared/constants";
+import { INDIAN_STATES, formatStateDisplay, isIntraStateTransaction, normalizeToStateCode } from "@shared/constants";
 
 const lineItemSchema = z.object({
   itemId: z.string().optional(),
@@ -127,16 +127,15 @@ export default function Invoices() {
     const subscription = form.watch((value, { name }) => {
       if (name === "customerId" && value.customerId) {
         const selectedCustomer = customers.find(c => c.id === value.customerId);
-        if (selectedCustomer && selectedCustomer.billingState) {
-          const stateCode = getStateCode(selectedCustomer.billingState);
+        if (selectedCustomer) {
+          // Try to get state code from billing state or GSTIN
+          const stateCode = normalizeToStateCode(
+            selectedCustomer.billingState || "", 
+            selectedCustomer.gstin || undefined
+          );
+          
           if (stateCode) {
             const state = INDIAN_STATES.find(s => s.code === stateCode);
-            if (state) {
-              form.setValue("placeOfSupply", formatStateDisplay(state));
-            }
-          } else {
-            // If state name doesn't match exactly, try to find by name
-            const state = INDIAN_STATES.find(s => s.name === selectedCustomer.billingState);
             if (state) {
               form.setValue("placeOfSupply", formatStateDisplay(state));
             }
@@ -169,8 +168,9 @@ export default function Invoices() {
       
       // Determine if transaction is intra-state or inter-state
       const orgState = currentOrg?.state || "";
+      const orgGstin = currentOrg?.gstin || "";
       const placeOfSupply = data.placeOfSupply;
-      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply);
+      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply, orgGstin);
       
       const invoiceItems = lineItems.map(item => {
         const amount = item.quantity * item.rate;
@@ -251,8 +251,9 @@ export default function Invoices() {
       
       // Determine if transaction is intra-state or inter-state
       const orgState = currentOrg?.state || "";
+      const orgGstin = currentOrg?.gstin || "";
       const placeOfSupply = data.placeOfSupply;
-      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply);
+      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply, orgGstin);
       
       lineItems.forEach(item => {
         const amount = item.quantity * item.rate;
