@@ -140,6 +140,27 @@ export const financialYearStatusEnum = pgEnum("financial_year_status", [
   "locked",
 ]);
 
+export const userRoleEnum = pgEnum("user_role", [
+  "platform_admin",
+  "org_admin",
+  "staff",
+  "viewer",
+]);
+
+export const subscriptionStatusEnum = pgEnum("subscription_status", [
+  "trialing",
+  "active",
+  "past_due",
+  "canceled",
+  "expired",
+]);
+
+export const planEnum = pgEnum("plan", [
+  "starter",
+  "professional",
+  "enterprise",
+]);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -164,6 +185,12 @@ export const organizations = pgTable("organizations", {
   }>(),
   fiscalYearStart: integer("fiscal_year_start").default(4), // April = 4
   invoicePrefix: text("invoice_prefix").default("INV"),
+  trialStartedAt: timestamp("trial_started_at"),
+  trialEndsAt: timestamp("trial_ends_at"),
+  subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trialing"),
+  planId: planEnum("plan_id").default("starter"),
+  isActive: boolean("is_active").default(true),
+  deletedAt: timestamp("deleted_at"),
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -288,7 +315,8 @@ export const users = pgTable("users", {
   password: text("password").notNull(),
   name: text("name").notNull(),
   avatarUrl: text("avatar_url"),
-  isSuperAdmin: boolean("is_super_admin").default(false),
+  role: userRoleEnum("role").default("viewer"),
+  isSuperAdmin: boolean("is_super_admin").default(false), // Deprecated, use role instead
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -800,17 +828,15 @@ export const refreshTokens = pgTable(
   })
 );
 
-// Audit Logs
+// Audit Logs (supports both org-level and platform admin actions)
 export const auditLogs = pgTable(
   "audit_logs",
   {
     id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
-    orgId: varchar("org_id")
-      .notNull()
-      .references(() => organizations.id, { onDelete: "cascade" }),
+    orgId: varchar("org_id").references(() => organizations.id, { onDelete: "cascade" }), // null for platform admin actions
     userId: varchar("user_id").references(() => users.id, { onDelete: "set null" }),
-    action: text("action").notNull(), // "create", "update", "delete"
-    entityType: text("entity_type").notNull(), // "invoice", "customer", etc.
+    action: text("action").notNull(), // "create", "update", "delete", "delete_organization", etc.
+    entityType: text("entity_type").notNull(), // "invoice", "customer", "organization", etc.
     entityId: varchar("entity_id").notNull(),
     changes: jsonb("changes"), // Before/after diff
     ipAddress: text("ip_address"),

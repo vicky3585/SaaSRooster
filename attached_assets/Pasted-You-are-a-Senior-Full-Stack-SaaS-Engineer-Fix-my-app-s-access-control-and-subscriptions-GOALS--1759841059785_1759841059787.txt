@@ -1,0 +1,51 @@
+You are a Senior Full-Stack SaaS Engineer. Fix my app’s access control and subscriptions.
+
+GOALS
+1) Lock Admin Panel to platform admins only.
+2) Show an “Admin Login” entry on the public/landing page (before any org login).
+3) Prevent ANY organization user from seeing/using the Admin Panel.
+4) Add 20-day trial per organization, then require paid subscription for full access.
+
+REQUIREMENTS
+A) Roles & Auth
+- Add role enum on users: ["platform_admin","org_admin","staff","viewer"].
+- Separate admin auth realm at /admin:
+  • Routes: /admin/login, /admin/logout, /admin/dashboard, /api/admin/*
+  • Admin session/JWT must include role=platform_admin.
+  • Non-admin requests to /admin or /api/admin/* → 403.
+- Public navbar shows “Admin Login” linking to /admin/login.
+- Seed one platform admin via env:
+  • ADMIN_EMAIL, ADMIN_PASSWORD_HASH (bcrypt)
+- Hide any “Admin” UI from non-admins; never rely only on frontend hiding—enforce on server.
+
+B) Tenant Isolation & Safe Deletes
+- Every data query must be org-scoped by org_id from the user’s JWT/session.
+- Block cross-org access server-side (middleware/guard).
+- “Delete organization” allowed only for platform_admin; use soft-delete + cascading disable (no data loss).
+- Add audit log (who/when/what) for admin actions.
+
+C) Trials & Subscriptions
+- orgs table: trial_started_at, trial_ends_at (default now()+20 days), subscription_status enum ["trialing","active","past_due","canceled","expired"], plan_id.
+- Middleware requireActiveSubscription on paid routes: allow if (trialing && now < trial_ends_at) OR subscription_status="active"; else redirect to /billing/subscribe.
+- Billing UI:
+  • /billing/subscribe page with plans and Razorpay checkout (sandbox ok).
+  • Webhooks: order paid → set subscription_status="active".
+- Notifications: email + in-app banners 7/3/1 days before trial end.
+
+D) Security & UX
+- Rate limit admin auth; CSRF for admin forms (if applicable); strong CORS/headers.
+- Show distinct Admin layout at /admin, not reachable from org app menus.
+- Tests: 
+  • Non-admin cannot hit any /admin or /api/admin/* (403).
+  • Cross-org data access blocked.
+  • Trial expires blocks paid routes; activating subscription restores access.
+
+DELIVERABLES
+- DB migration(s) for roles, trial fields, subscription_status, plan_id.
+- Admin auth pages + guards, server middleware, and seeded admin.
+- Billing pages, Razorpay webhook handler, requireActiveSubscription middleware.
+- E2E script: seed admin + demo org → verify admin-only routes → start trial → expire trial (mock) → subscribe → regain access.
+- Update README with envs: ADMIN_EMAIL, ADMIN_PASSWORD_HASH, RAZORPAY_KEY_ID/SECRET, TRIAL_DAYS=20.
+
+Proceed and show diffs/files created.```
+::contentReference[oaicite:0]{index=0}
