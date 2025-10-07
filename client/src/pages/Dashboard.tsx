@@ -351,8 +351,8 @@ export default function Dashboard() {
       {/* Footer */}
       <div className="mt-12 pt-6 border-t border-border">
         <div className="text-center">
-          <h2 className="text-2xl font-bold mb-2">Ledgix</h2>
-          <p className="text-sm text-muted-foreground mb-4">Ledger + Logic - Comprehensive Billing & Accounting Solution</p>
+          <h2 className="text-2xl font-bold mb-2">Bizverse</h2>
+          <p className="text-sm text-muted-foreground mb-4">Comprehensive Billing & Accounting Solution</p>
           <p className="text-xs text-muted-foreground">© {new Date().getFullYear()} Flying Venture System. All rights reserved.</p>
         </div>
       </div>
