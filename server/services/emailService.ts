@@ -83,9 +83,8 @@ export async function sendInvoiceEmail(
 
     const emailBody = `${body.replace(/\n/g, '<br>')}<br><br><hr><br>${invoiceHTML}`;
 
-    // Use Resend's onboarding domain for testing
-    // To use custom domain: verify your domain at https://resend.com/domains
-    const fromEmail = 'onboarding@resend.dev';
+    // Using verified domain hugenetwork.in
+    const fromEmail = 'invoices@hugenetwork.in';
     const fromName = organization.name || 'Invoice';
 
     const result = await resend.emails.send({
