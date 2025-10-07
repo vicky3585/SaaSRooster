@@ -26,6 +26,12 @@ import notesRoutes from "./routes/notes";
 import attachmentsRoutes from "./routes/attachments";
 import recurringInvoicesRoutes from "./routes/recurringInvoices";
 import searchRoutes from "./routes/search";
+import unitsRoutes from "./routes/units";
+import gstRatesRoutes from "./routes/gstRates";
+import orgGstinsRoutes from "./routes/orgGstins";
+import financialYearsRoutes from "./routes/financialYears";
+import vendorsRoutes from "./routes/vendors";
+import priceListsRoutes from "./routes/priceLists";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -33,6 +39,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", authRoutes);
   app.use("/api/users", usersRoutes);
   app.use("/api/customers", customersRoutes);
+  app.use("/api/vendors", vendorsRoutes);
   app.use("/api/invoices", invoicesRoutes);
   app.use("/api/warehouses", warehousesRoutes);
   app.use("/api/items", itemsRoutes);
@@ -40,6 +47,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/expenses", expensesRoutes);
   app.use("/api/memberships", membershipsRoutes);
   app.use("/api/organizations", organizationsRoutes);
+  app.use("/api/org-gstins", orgGstinsRoutes);
+  app.use("/api/financial-years", financialYearsRoutes);
+  app.use("/api/units", unitsRoutes);
+  app.use("/api/gst-rates", gstRatesRoutes);
+  app.use("/api/price-lists", priceListsRoutes);
   app.use("/api/leads", leadsRoutes);
   app.use("/api/deals", dealsRoutes);
   app.use("/api/activities", activitiesRoutes);

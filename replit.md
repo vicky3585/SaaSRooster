@@ -30,6 +30,60 @@ Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and acc
 - **Inventory Management:** Stock tracking with warehouse support
 - Role-based access control (Owner, Admin, Accountant, Viewer)
 
+## Recent Changes
+
+### Phase 1: Enhanced Master Data & Multi-GSTIN Support (Latest)
+- **Multi-GSTIN Support:** Organizations can now manage multiple GSTINs with `org_gstins` table
+  - Each GSTIN has type (regular, composition, SEZ, export), state code, legal/trade name
+  - Set default GSTIN for invoicing per organization
+  - Complete address and validity period tracking
+- **Financial Years:** Full financial year management with period locking
+  - Track multiple FYs per organization (2024-25, 2025-26, etc.)
+  - Set current/active financial year with status (active, closed, locked)
+  - Date range validation with start/end dates
+- **Enhanced Items Master:**
+  - Barcode support for quick item lookup
+  - Batch and serial number tracking (manufacturing/expiry dates, warranty)
+  - GST cess support (percentage and fixed amount per unit)
+  - Multiple price lists with customer-specific pricing
+  - Opening stock and stock value tracking
+- **Units Master:** Standardized measurement units
+  - Pre-configured units (PCS, KG, L, M, SQM, etc.)
+  - UQC codes for e-invoicing compliance
+  - Seed endpoint for default units setup
+- **GST Rates Master:** Standard Indian GST rate slabs
+  - Rates: 0%, 0.25%, 3%, 5%, 12%, 18%, 28%
+  - Cess configuration (percentage + fixed amount)
+  - Seed endpoint for standard rate setup
+- **Vendors/Suppliers Module:**
+  - Separate vendor management with GSTIN, PAN tracking
+  - TDS section and rate configuration (194C, 194J, etc.)
+  - Place of supply for accurate GST calculations
+  - Opening balances and payment terms
+- **Price Lists:** Customer-specific pricing support
+  - Multiple price lists per organization (Retail, Wholesale, Distributor)
+  - Time-bound pricing (effective from/to dates)
+  - Item-specific price list entries
+
+**API Endpoints Added:**
+- `/api/units` - Units master CRUD + seed endpoint
+- `/api/gst-rates` - GST rates master CRUD + seed endpoint
+- `/api/org-gstins` - Multi-GSTIN management with set-default endpoint
+- `/api/financial-years` - Financial year management with set-current endpoint
+- `/api/vendors` - Vendor/supplier management
+- `/api/price-lists` - Price list management
+
+**Database Tables Added:**
+- `org_gstins` - Multiple GSTINs per organization
+- `financial_years` - Financial year periods with locking
+- `units` - Measurement units master
+- `gst_rates` - GST rate slabs with cess
+- `vendors` - Supplier/vendor master
+- `price_lists` - Customer pricing schemes
+- `item_prices` - Item-specific price list entries
+- `item_batches` - Batch tracking for items
+- `item_serials` - Serial number tracking
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
