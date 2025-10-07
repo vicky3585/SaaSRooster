@@ -14,6 +14,7 @@ import Dashboard from "@/pages/Dashboard";
 import Invoices from "@/pages/Invoices";
 import Customers from "@/pages/Customers";
 import Inventory from "@/pages/Inventory";
+import Expenses from "@/pages/Expenses";
 import Reports from "@/pages/Reports";
 import Settings from "@/pages/Settings";
 import NotFound from "@/pages/not-found";
@@ -48,18 +49,7 @@ function AuthenticatedRouter() {
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
-      <Route path="/expenses">
-        {() => (
-          <ProtectedRoute
-            component={() => (
-              <div className="p-6">
-                <h1 className="text-3xl font-bold">Expenses</h1>
-                <p className="text-muted-foreground mt-1">Expense tracking coming soon...</p>
-              </div>
-            )}
-          />
-        )}
-      </Route>
+      <Route path="/expenses" component={() => <ProtectedRoute component={Expenses} />} />
       <Route path="/staff">
         {() => (
           <ProtectedRoute
