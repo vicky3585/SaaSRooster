@@ -812,9 +812,11 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   updatedAt: true,
   pdfUrl: true,
   sentAt: true,
+  invoiceDate: true,
+  dueDate: true,
 }).extend({
-  invoiceDate: z.union([z.string(), z.date()]).transform(val => typeof val === 'string' ? new Date(val) : val),
-  dueDate: z.union([z.string(), z.date()]).transform(val => typeof val === 'string' ? new Date(val) : val),
+  invoiceDate: z.string().transform(val => new Date(val)),
+  dueDate: z.string().transform(val => new Date(val)),
   cgst: z.string().optional().default("0"),
   sgst: z.string().optional().default("0"),
   igst: z.string().optional().default("0"),
