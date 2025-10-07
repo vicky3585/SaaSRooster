@@ -24,6 +24,7 @@ export const INDIAN_STATES = [
   { code: "22", name: "Chhattisgarh" },
   { code: "23", name: "Madhya Pradesh" },
   { code: "24", name: "Gujarat" },
+  { code: "25", name: "Daman & Diu" },
   { code: "26", name: "Dadra & Nagar Haveli and Daman & Diu" },
   { code: "27", name: "Maharashtra" },
   { code: "28", name: "Andhra Pradesh (Before Division)" },
