@@ -6,6 +6,19 @@ Bizverse is a production-ready, multi-tenant SaaS billing and accounting portal 
 
 ## Recent Changes
 
+### Indian State Selection & Intelligent GST Calculation (October 2025)
+- **Place of Supply with State Codes**: Invoice creation now shows all Indian states with GST state codes
+  - Dropdown format: "Code - State Name" (e.g., "29 - Karnataka", "27 - Maharashtra")
+  - Complete coverage of all 38 Indian states and union territories with GST codes (01-38, 97)
+  - Auto-populates from customer's billing state when customer is selected
+  - Supports states stored as codes (e.g., "29") or names (e.g., "Karnataka")
+  - Falls back to GSTIN extraction if billing state is not available
+- **Intelligent GST Calculation**: Automatically determines tax type based on transaction
+  - **Intra-State** (same state as organization): Applies CGST + SGST (50-50 split)
+  - **Inter-State** (different state from organization): Applies IGST (full tax)
+  - Uses organization state from `state` field or extracts from `gstin`
+  - Correctly handles all state code formats for accurate tax calculation
+
 ### Admin Password Reset Feature (October 2025)
 - **Platform Admin Password Reset**: Platform administrators can now reset passwords for organization users through the Admin Panel
   - Access via Admin Panel → Organizations → "Users" button → Select user → "Reset Password"
