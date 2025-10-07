@@ -35,10 +35,12 @@ import priceListsRoutes from "./routes/priceLists";
 import aiRoutes from "./routes/ai";
 import dashboardRoutes from "./routes/dashboard";
 import adminRoutes from "./routes/admin";
+import adminAuthRoutes from "./routes/adminAuth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
   
+  app.use("/api/admin/auth", adminAuthRoutes);
   app.use("/api/admin", adminRoutes);
   app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/auth", authRoutes);

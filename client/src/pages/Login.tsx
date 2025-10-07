@@ -86,6 +86,15 @@ export default function Login() {
               Sign up
             </button>
           </div>
+          <div className="mt-2 pt-4 border-t text-center">
+            <button
+              onClick={() => setLocation('/admin/login')}
+              className="text-sm text-muted-foreground hover:text-foreground transition-colors"
+              data-testid="link-admin-login"
+            >
+              Platform Admin Login →
+            </button>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -57,10 +57,19 @@ router.post("/register", async (req, res) => {
       .replace(/[^a-z0-9]+/g, '-')
       .replace(/^-|-$/g, '');
 
+    // Set 20-day trial
+    const trialDays = parseInt(process.env.TRIAL_DAYS || "20", 10);
+    const trialStartedAt = new Date();
+    const trialEndsAt = new Date(trialStartedAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
     const organization = await storage.createOrganization({
       name: body.orgName,
       slug: slug,
       gstin: body.gstin || null,
+      trialStartedAt,
+      trialEndsAt,
+      subscriptionStatus: "trialing",
+      planId: "starter",
     });
 
     await storage.createMembership({
@@ -124,9 +133,18 @@ router.post("/signup", async (req, res) => {
       password: hashedPassword,
     });
 
+    // Set 20-day trial
+    const trialDays = parseInt(process.env.TRIAL_DAYS || "20", 10);
+    const trialStartedAt = new Date();
+    const trialEndsAt = new Date(trialStartedAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
+
     const organization = await storage.createOrganization({
       name: body.organizationName,
       slug: body.organizationSlug,
+      trialStartedAt,
+      trialEndsAt,
+      subscriptionStatus: "trialing",
+      planId: "starter",
     });
 
     await storage.createMembership({

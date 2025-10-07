@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useLocation } from "wouter";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -20,9 +21,44 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Trash2, Building2, Shield, Users } from "lucide-react";
+import { Search, Trash2, Building2, Shield, Users, LogOut, Loader2 } from "lucide-react";
+
+// Admin API request helper
+async function adminApiRequest(method: string, url: string, data?: any) {
+  const adminToken = localStorage.getItem("adminAccessToken");
+  
+  if (!adminToken) {
+    throw new Error("Admin authentication required");
+  }
+
+  const options: RequestInit = {
+    method,
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${adminToken}`,
+    },
+  };
+
+  if (data) {
+    options.body = JSON.stringify(data);
+  }
+
+  const response = await fetch(url, options);
+  
+  if (!response.ok) {
+    if (response.status === 401 || response.status === 403) {
+      localStorage.removeItem("adminAccessToken");
+      window.location.href = "/admin/login";
+      throw new Error("Admin session expired");
+    }
+    const error = await response.json();
+    throw new Error(error.message || "Request failed");
+  }
+
+  return response.json();
+}
 
 type Organization = {
   id: string;
@@ -36,16 +72,26 @@ export default function AdminPanel() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<Organization | null>(null);
+  const [, setLocation] = useLocation();
   const { toast } = useToast();
+
+  // Check admin authentication
+  useEffect(() => {
+    const adminToken = localStorage.getItem("adminAccessToken");
+    if (!adminToken) {
+      setLocation("/admin/login");
+    }
+  }, [setLocation]);
 
   // Fetch all organizations
   const { data: organizations = [], isLoading } = useQuery<Organization[]>({
     queryKey: ["/api/admin/organizations"],
+    queryFn: () => adminApiRequest("GET", "/api/admin/organizations"),
   });
 
   const deleteOrgMutation = useMutation({
     mutationFn: async (orgId: string) => {
-      await apiRequest("DELETE", `/api/admin/organizations/${orgId}`);
+      await adminApiRequest("DELETE", `/api/admin/organizations/${orgId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
@@ -83,18 +129,37 @@ export default function AdminPanel() {
     }
   };
 
+  const handleLogout = () => {
+    localStorage.removeItem("adminAccessToken");
+    toast({
+      title: "Logged out",
+      description: "You have been logged out of the admin panel",
+    });
+    setLocation("/admin/login");
+  };
+
   return (
     <div className="p-6 space-y-6" data-testid="page-admin-panel">
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-primary/10 text-primary rounded-md">
-          <Shield className="w-8 h-8" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-4">
+          <div className="p-3 bg-primary/10 text-primary rounded-md">
+            <Shield className="w-8 h-8" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold">Platform Admin Panel</h1>
+            <p className="text-muted-foreground mt-1">
+              Manage all organizations and system settings
+            </p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold">Super Admin Panel</h1>
-          <p className="text-muted-foreground mt-1">
-            Manage all organizations and system settings
-          </p>
-        </div>
+        <Button
+          variant="outline"
+          onClick={handleLogout}
+          data-testid="button-admin-logout"
+        >
+          <LogOut className="w-4 h-4 mr-2" />
+          Logout
+        </Button>
       </div>
 
       {/* Stats Cards */}

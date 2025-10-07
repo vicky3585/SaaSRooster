@@ -29,6 +29,7 @@ import ProformaInvoice from "@/pages/ProformaInvoice";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import PurchaseInvoices from "@/pages/PurchaseInvoices";
 import AdminPanel from "@/pages/AdminPanel";
+import AdminLogin from "@/pages/AdminLogin";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -85,6 +86,7 @@ function PublicRouter() {
     <Switch>
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/admin/login" component={AdminLogin} />
       <Route path="/" component={() => <Redirect to="/login" />} />
       <Route component={() => <Redirect to="/login" />} />
     </Switch>

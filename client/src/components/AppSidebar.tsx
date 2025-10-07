@@ -409,18 +409,6 @@ export function AppSidebar() {
               </SidebarMenuButton>
             </SidebarMenuItem>
 
-            <SidebarMenuItem>
-              <SidebarMenuButton
-                asChild
-                isActive={location === "/admin"}
-                data-testid="nav-admin"
-              >
-                <a href="/admin" onClick={handleNavigation("/admin")}>
-                  <Shield className="w-4 h-4" />
-                  <span>Admin Panel</span>
-                </a>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
           </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>

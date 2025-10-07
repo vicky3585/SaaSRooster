@@ -1,34 +1,16 @@
 import { Router } from "express";
 import { storage } from "../storage";
-import { authenticateToken, type AuthRequest } from "../middleware/auth";
+import { requirePlatformAdmin } from "../middleware/platformAdmin";
 import { db } from "../db";
-import { organizations, memberships, users } from "@shared/schema";
-import { eq, count } from "drizzle-orm";
+import { organizations, memberships, users, auditLogs } from "@shared/schema";
+import { eq, count, isNull } from "drizzle-orm";
 
 const router = Router();
 
-// Middleware to check super admin status
-const requireSuperAdmin = async (req: AuthRequest, res: any, next: any) => {
-  try {
-    const userId = req.user!.userId;
-    const [user] = await db.select().from(users).where(eq(users.id, userId));
-    
-    if (!user || !user.isSuperAdmin) {
-      return res.status(403).json({ message: "Super admin access required" });
-    }
-    
-    next();
-  } catch (error) {
-    console.error("Super admin check error:", error);
-    res.status(500).json({ message: "Internal server error" });
-  }
-};
-
-router.use(authenticateToken);
-router.use(requireSuperAdmin);
+router.use(requirePlatformAdmin);
 
 // Get all organizations with member counts
-router.get("/organizations", async (req: AuthRequest, res) => {
+router.get("/organizations", async (req: any, res) => {
   try {
     const orgs = await db
       .select({
@@ -61,17 +43,92 @@ router.get("/organizations", async (req: AuthRequest, res) => {
   }
 });
 
-// Delete an organization (cascades to all related data)
-router.delete("/organizations/:id", async (req: AuthRequest, res) => {
+// Soft-delete an organization (marks as inactive instead of hard delete)
+router.delete("/organizations/:id", async (req: any, res) => {
   try {
     const orgId = req.params.id;
+    const adminId = req.admin.userId;
     
-    // Delete the organization (cascade will handle related data)
-    await db.delete(organizations).where(eq(organizations.id, orgId));
+    // Get organization details before deletion
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
     
-    res.json({ message: "Organization deleted successfully" });
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+    
+    // Soft delete - mark as inactive
+    await db
+      .update(organizations)
+      .set({
+        isActive: false,
+        deletedAt: new Date(),
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, orgId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null, // Platform admin action
+      action: "soft_delete_organization",
+      entityType: "organization",
+      entityId: orgId,
+      changes: {
+        organizationName: org.name,
+        organizationSlug: org.slug,
+        deletedAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ message: "Organization deactivated successfully" });
   } catch (error) {
-    console.error("Delete organization error:", error);
+    console.error("Soft delete organization error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Restore a soft-deleted organization
+router.post("/organizations/:id/restore", async (req: any, res) => {
+  try {
+    const orgId = req.params.id;
+    const adminId = req.admin.userId;
+    
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+    
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+    
+    // Restore organization
+    await db
+      .update(organizations)
+      .set({
+        isActive: true,
+        deletedAt: null,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, orgId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null,
+      action: "restore_organization",
+      entityType: "organization",
+      entityId: orgId,
+      changes: {
+        organizationName: org.name,
+        restoredAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ message: "Organization restored successfully" });
+  } catch (error) {
+    console.error("Restore organization error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
