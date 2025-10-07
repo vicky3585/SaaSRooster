@@ -26,6 +26,7 @@ import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import GlobalSearch from "@/components/GlobalSearch";
 
 function ProtectedRoute({ component: Component }: { component: React.ComponentType }) {
   const { user, isLoading } = useAuth();
@@ -114,6 +115,9 @@ function AppContent() {
         <div className="flex flex-col flex-1 overflow-hidden">
           <header className="flex items-center justify-between px-6 py-3 border-b bg-background sticky top-0 z-50">
             <SidebarTrigger data-testid="button-sidebar-toggle" />
+            <div className="flex-1 flex justify-center px-4">
+              <GlobalSearch />
+            </div>
             <div className="flex items-center gap-2">
               <OrgSwitcher />
               <Button variant="ghost" size="icon" data-testid="button-notifications">
