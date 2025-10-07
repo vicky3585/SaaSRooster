@@ -30,29 +30,56 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const fetchUser = async () => {
     try {
-      const token = localStorage.getItem('accessToken');
-      const headers: Record<string, string> = {};
-      
-      if (token) {
-        headers['Authorization'] = `Bearer ${token}`;
+      const makeRequest = async (token: string | null) => {
+        const headers: Record<string, string> = {};
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return await fetch('/api/auth/me', {
+          credentials: 'include',
+          headers,
+        });
+      };
+
+      let token = localStorage.getItem('accessToken');
+      let response = await makeRequest(token);
+
+      if (response.status === 401) {
+        try {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+          });
+          
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.accessToken) {
+              localStorage.setItem('accessToken', refreshData.accessToken);
+              setAccessToken(refreshData.accessToken);
+              response = await makeRequest(refreshData.accessToken);
+            }
+          }
+        } catch (refreshError) {
+          setUser(null);
+          localStorage.removeItem('accessToken');
+          setAccessToken(null);
+        }
       }
 
-      const response = await fetch('/api/auth/me', {
-        credentials: 'include',
-        headers,
-      });
       if (response.ok) {
         const data = await response.json();
         setUser(data.user);
       } else {
         setUser(null);
-        if (response.status === 401) {
-          localStorage.removeItem('accessToken');
-          setAccessToken(null);
-        }
+        localStorage.removeItem('accessToken');
+        setAccessToken(null);
       }
     } catch (error) {
       setUser(null);
+      localStorage.removeItem('accessToken');
+      setAccessToken(null);
     } finally {
       setIsLoading(false);
     }
