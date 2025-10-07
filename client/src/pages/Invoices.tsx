@@ -49,6 +49,7 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import type { Invoice, Customer } from "@shared/schema";
 import { format } from "date-fns";
+import { INDIAN_STATES, formatStateDisplay, isIntraStateTransaction, getStateCode } from "@shared/constants";
 
 const lineItemSchema = z.object({
   itemId: z.string().optional(),
@@ -92,6 +93,10 @@ export default function Invoices() {
     queryKey: ["/api/items"],
   });
 
+  const { data: currentOrg } = useQuery<any>({
+    queryKey: ["/api/organizations/current"],
+  });
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
@@ -117,6 +122,31 @@ export default function Invoices() {
     }
   }, [isDialogOpen]);
 
+  // Auto-populate Place of Supply when customer is selected
+  useEffect(() => {
+    const subscription = form.watch((value, { name }) => {
+      if (name === "customerId" && value.customerId) {
+        const selectedCustomer = customers.find(c => c.id === value.customerId);
+        if (selectedCustomer && selectedCustomer.billingState) {
+          const stateCode = getStateCode(selectedCustomer.billingState);
+          if (stateCode) {
+            const state = INDIAN_STATES.find(s => s.code === stateCode);
+            if (state) {
+              form.setValue("placeOfSupply", formatStateDisplay(state));
+            }
+          } else {
+            // If state name doesn't match exactly, try to find by name
+            const state = INDIAN_STATES.find(s => s.name === selectedCustomer.billingState);
+            if (state) {
+              form.setValue("placeOfSupply", formatStateDisplay(state));
+            }
+          }
+        }
+      }
+    });
+    return () => subscription.unsubscribe();
+  }, [form, customers]);
+
   const fetchNextInvoiceNumber = async () => {
     try {
       const response = await apiRequest("GET", "/api/invoices/next-number");
@@ -137,14 +167,23 @@ export default function Invoices() {
       let sgst = 0;
       let igst = 0;
       
+      // Determine if transaction is intra-state or inter-state
+      const orgState = currentOrg?.state || "";
+      const placeOfSupply = data.placeOfSupply;
+      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply);
+      
       const invoiceItems = lineItems.map(item => {
         const amount = item.quantity * item.rate;
         const taxAmount = (amount * item.taxRate) / 100;
         subtotal += amount;
         
-        // Assume CGST/SGST for now (can be improved with state comparison)
-        cgst += taxAmount / 2;
-        sgst += taxAmount / 2;
+        // Apply CGST+SGST for intra-state, IGST for inter-state
+        if (isIntraState) {
+          cgst += taxAmount / 2;
+          sgst += taxAmount / 2;
+        } else {
+          igst += taxAmount;
+        }
         
         return {
           itemId: item.itemId,
@@ -210,12 +249,23 @@ export default function Invoices() {
       let sgst = 0;
       let igst = 0;
       
+      // Determine if transaction is intra-state or inter-state
+      const orgState = currentOrg?.state || "";
+      const placeOfSupply = data.placeOfSupply;
+      const isIntraState = isIntraStateTransaction(orgState, placeOfSupply);
+      
       lineItems.forEach(item => {
         const amount = item.quantity * item.rate;
         const taxAmount = (amount * item.taxRate) / 100;
         subtotal += amount;
-        cgst += taxAmount / 2;
-        sgst += taxAmount / 2;
+        
+        // Apply CGST+SGST for intra-state, IGST for inter-state
+        if (isIntraState) {
+          cgst += taxAmount / 2;
+          sgst += taxAmount / 2;
+        } else {
+          igst += taxAmount;
+        }
       });
       
       const total = subtotal + cgst + sgst + igst;
@@ -705,9 +755,20 @@ export default function Invoices() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Place of Supply *</FormLabel>
-                      <FormControl>
-                        <Input {...field} placeholder="e.g., Karnataka" data-testid="input-place-of-supply" />
-                      </FormControl>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-place-of-supply">
+                            <SelectValue placeholder="Select state" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {INDIAN_STATES.map((state) => (
+                            <SelectItem key={state.code} value={formatStateDisplay(state)}>
+                              {formatStateDisplay(state)}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                       <FormMessage />
                     </FormItem>
                   )}
