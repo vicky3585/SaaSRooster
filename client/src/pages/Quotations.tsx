@@ -26,7 +26,7 @@ import {
 } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
 import { Search, Plus, Edit, Trash2, Send, FileCheck, X } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
@@ -36,6 +36,9 @@ import { format } from "date-fns";
 export default function Quotations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
+  const [convertingQuotation, setConvertingQuotation] = useState<Invoice | null>(null);
+  const [newInvoiceNumber, setNewInvoiceNumber] = useState("");
   const { toast } = useToast();
 
   // Fetch data
@@ -57,6 +60,12 @@ export default function Quotations() {
     enabled: dialogOpen,
   });
 
+  // Fetch next invoice number for conversion
+  const { data: nextInvoiceNumberData } = useQuery<{ invoiceNumber: string }>({
+    queryKey: ["/api/invoices/next-number"],
+    enabled: convertDialogOpen,
+  });
+
   // Form state
   const [customerId, setCustomerId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -69,6 +78,13 @@ export default function Quotations() {
     rate: number;
     amount: number;
   }>>([]);
+
+  // Sync new invoice number when data is available
+  useEffect(() => {
+    if (nextInvoiceNumberData?.invoiceNumber) {
+      setNewInvoiceNumber(nextInvoiceNumberData.invoiceNumber);
+    }
+  }, [nextInvoiceNumberData]);
 
   // Filter for quotations (draft invoices)
   const filteredQuotations = quotations
@@ -123,14 +139,19 @@ export default function Quotations() {
   });
 
   const convertToInvoiceMutation = useMutation({
-    mutationFn: async (id: string) => {
+    mutationFn: async ({ id, invoiceNumber }: { id: string; invoiceNumber: string }) => {
       const response = await apiRequest("PATCH", `/api/invoices/${id}`, {
         status: "sent",
+        invoiceNumber: invoiceNumber,
       });
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices/next-number"] });
+      setConvertDialogOpen(false);
+      setConvertingQuotation(null);
+      setNewInvoiceNumber("");
       toast({
         title: "Converted to invoice",
         description: "Quotation has been converted to an invoice successfully",
@@ -245,10 +266,18 @@ export default function Quotations() {
     }
   };
 
-  const handleConvertToInvoice = (id: string) => {
-    if (confirm("Convert this quotation to an invoice?")) {
-      convertToInvoiceMutation.mutate(id);
-    }
+  const handleConvertToInvoice = (quotation: Invoice) => {
+    setConvertingQuotation(quotation);
+    setConvertDialogOpen(true);
+  };
+
+  const confirmConvertToInvoice = () => {
+    if (!convertingQuotation || !newInvoiceNumber) return;
+    
+    convertToInvoiceMutation.mutate({ 
+      id: convertingQuotation.id,
+      invoiceNumber: newInvoiceNumber
+    });
   };
 
   const { subtotal, tax, total } = calculateTotal();
@@ -552,7 +581,7 @@ export default function Quotations() {
                       <Button
                         variant="ghost"
                         size="icon"
-                        onClick={() => handleConvertToInvoice(quotation.id)}
+                        onClick={() => handleConvertToInvoice(quotation)}
                         data-testid={`button-convert-${quotation.id}`}
                       >
                         <Send className="w-4 h-4" />
@@ -573,6 +602,70 @@ export default function Quotations() {
           </Table>
         )}
       </Card>
+
+      {/* Convert to Invoice Dialog */}
+      <Dialog open={convertDialogOpen} onOpenChange={setConvertDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Convert to Invoice</DialogTitle>
+          </DialogHeader>
+
+          {convertingQuotation && (
+            <div className="space-y-6">
+              {/* Quotation Details */}
+              <div className="p-4 bg-muted/50 rounded-md space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Quotation Number:</span>
+                  <span className="font-mono font-medium">{convertingQuotation.invoiceNumber}</span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-muted-foreground">Amount:</span>
+                  <span className="font-semibold">₹{Number(convertingQuotation.total).toLocaleString('en-IN')}</span>
+                </div>
+              </div>
+
+              {/* New Invoice Number */}
+              <div className="space-y-2">
+                <Label htmlFor="invoice-number">Invoice Number *</Label>
+                <Input
+                  id="invoice-number"
+                  value={newInvoiceNumber}
+                  onChange={(e) => setNewInvoiceNumber(e.target.value)}
+                  placeholder="INV-25-26-00001"
+                  className="font-mono"
+                  data-testid="input-invoice-number"
+                />
+                <p className="text-xs text-muted-foreground">
+                  This will be the new invoice number. You can edit it if needed.
+                </p>
+              </div>
+
+              {/* Actions */}
+              <div className="flex justify-end gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setConvertDialogOpen(false);
+                    setConvertingQuotation(null);
+                    setNewInvoiceNumber("");
+                  }}
+                  data-testid="button-cancel-convert"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  onClick={confirmConvertToInvoice}
+                  disabled={!newInvoiceNumber || convertToInvoiceMutation.isPending}
+                  data-testid="button-confirm-convert"
+                >
+                  {convertToInvoiceMutation.isPending ? "Converting..." : "Convert to Invoice"}
+                </Button>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="text-sm text-muted-foreground">
         <p>
