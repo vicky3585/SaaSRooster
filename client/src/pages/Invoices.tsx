@@ -74,6 +74,9 @@ type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 export default function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isViewDialogOpen, setIsViewDialogOpen] = useState(false);
+  const [selectedInvoice, setSelectedInvoice] = useState<any>(null);
+  const [dialogMode, setDialogMode] = useState<"create" | "edit">("create");
   const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
   const { toast } = useToast();
 
@@ -195,6 +198,65 @@ export default function Invoices() {
     },
   });
 
+  const updateMutation = useMutation({
+    mutationFn: async (data: InvoiceFormValues) => {
+      if (!selectedInvoice) return;
+      
+      const lineItems = data.lineItems;
+      
+      // Calculate subtotal and tax
+      let subtotal = 0;
+      let cgst = 0;
+      let sgst = 0;
+      let igst = 0;
+      
+      lineItems.forEach(item => {
+        const amount = item.quantity * item.rate;
+        const taxAmount = (amount * item.taxRate) / 100;
+        subtotal += amount;
+        cgst += taxAmount / 2;
+        sgst += taxAmount / 2;
+      });
+      
+      const total = subtotal + cgst + sgst + igst;
+      
+      const payload = {
+        customerId: data.customerId,
+        invoiceDate: new Date(data.invoiceDate).toISOString(),
+        dueDate: new Date(data.dueDate).toISOString(),
+        placeOfSupply: data.placeOfSupply,
+        subtotal: subtotal.toString(),
+        cgst: cgst.toString(),
+        sgst: sgst.toString(),
+        igst: igst.toString(),
+        total: total.toString(),
+        amountDue: total.toString(),
+        status: data.status,
+        notes: data.notes,
+      };
+      
+      const response = await apiRequest("PATCH", `/api/invoices/${selectedInvoice.id}`, payload);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      setIsDialogOpen(false);
+      form.reset();
+      setSelectedInvoice(null);
+      toast({
+        title: "Invoice updated",
+        description: "Invoice has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to update invoice",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
   const deleteMutation = useMutation({
     mutationFn: async (id: string) => {
       await apiRequest("DELETE", `/api/invoices/${id}`);
@@ -221,11 +283,82 @@ export default function Invoices() {
   );
 
   const handleCreateInvoice = () => {
+    setDialogMode("create");
+    setSelectedInvoice(null);
+    form.reset({
+      customerId: "",
+      invoiceDate: format(new Date(), "yyyy-MM-dd"),
+      dueDate: format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
+      placeOfSupply: "",
+      lineItems: [{ description: "", hsnCode: "", quantity: 1, rate: 0, taxRate: 18 }],
+      status: "draft",
+      notes: "",
+    });
     setIsDialogOpen(true);
   };
 
+  const handleViewInvoice = async (invoice: Invoice) => {
+    try {
+      const response = await apiRequest("GET", `/api/invoices/${invoice.id}`);
+      const data = await response.json();
+      setSelectedInvoice(data);
+      setIsViewDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load invoice details",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleEditInvoice = async (invoice: Invoice) => {
+    try {
+      const response = await apiRequest("GET", `/api/invoices/${invoice.id}`);
+      const data = await response.json();
+      setSelectedInvoice(data);
+      setDialogMode("edit");
+      
+      // Populate form with invoice data
+      const lineItems = data.items?.map((item: any) => ({
+        itemId: item.itemId,
+        description: item.description,
+        hsnCode: item.hsnCode || "",
+        quantity: Number(item.quantity),
+        rate: Number(item.rate),
+        taxRate: Number(item.taxRate),
+      })) || [];
+
+      form.reset({
+        customerId: data.customerId,
+        invoiceDate: format(new Date(data.invoiceDate), "yyyy-MM-dd"),
+        dueDate: format(new Date(data.dueDate), "yyyy-MM-dd"),
+        placeOfSupply: data.placeOfSupply,
+        lineItems: lineItems.length > 0 ? lineItems : [{ description: "", hsnCode: "", quantity: 1, rate: 0, taxRate: 18 }],
+        status: data.status,
+        notes: data.notes || "",
+      });
+      
+      setIsDialogOpen(true);
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to load invoice for editing",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDownloadPDF = (invoice: Invoice) => {
+    window.open(`/api/invoices/${invoice.id}/pdf`, '_blank');
+  };
+
   const handleSubmit = (values: InvoiceFormValues) => {
-    createMutation.mutate(values);
+    if (dialogMode === "edit") {
+      updateMutation.mutate(values);
+    } else {
+      createMutation.mutate(values);
+    }
   };
 
   const handleDelete = (id: string) => {
@@ -428,19 +561,19 @@ export default function Invoices() {
                         </Button>
                       </DropdownMenuTrigger>
                       <DropdownMenuContent align="end">
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleViewInvoice(invoice)} data-testid={`menu-view-${invoice.id}`}>
                           <Eye className="w-4 h-4" />
                           View
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleEditInvoice(invoice)} data-testid={`menu-edit-${invoice.id}`}>
                           <Edit className="w-4 h-4" />
                           Edit
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2">
+                        <DropdownMenuItem className="gap-2" onClick={() => handleDownloadPDF(invoice)} data-testid={`menu-download-${invoice.id}`}>
                           <Download className="w-4 h-4" />
                           Download PDF
                         </DropdownMenuItem>
-                        <DropdownMenuItem className="gap-2 text-destructive" onClick={() => handleDelete(invoice.id)}>
+                        <DropdownMenuItem className="gap-2 text-destructive" onClick={() => handleDelete(invoice.id)} data-testid={`menu-delete-${invoice.id}`}>
                           <Trash2 className="w-4 h-4" />
                           Delete
                         </DropdownMenuItem>
@@ -457,9 +590,9 @@ export default function Invoices() {
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>Create Invoice</DialogTitle>
+            <DialogTitle>{dialogMode === "edit" ? "Edit Invoice" : "Create Invoice"}</DialogTitle>
             <DialogDescription>
-              Create a new professional invoice with line items
+              {dialogMode === "edit" ? "Update invoice details and line items" : "Create a new professional invoice with line items"}
             </DialogDescription>
           </DialogHeader>
 
@@ -818,21 +951,164 @@ export default function Invoices() {
                 </Button>
                 <Button
                   type="submit"
-                  disabled={createMutation.isPending}
+                  disabled={createMutation.isPending || updateMutation.isPending}
                   data-testid="button-save-invoice"
                 >
-                  {createMutation.isPending ? (
+                  {createMutation.isPending || updateMutation.isPending ? (
                     <>
                       <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-                      Creating...
+                      {dialogMode === "edit" ? "Updating..." : "Creating..."}
                     </>
                   ) : (
-                    "Create Invoice"
+                    dialogMode === "edit" ? "Update Invoice" : "Create Invoice"
                   )}
                 </Button>
               </DialogFooter>
             </form>
           </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* View Invoice Dialog */}
+      <Dialog open={isViewDialogOpen} onOpenChange={setIsViewDialogOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Invoice Details</DialogTitle>
+            <DialogDescription>
+              View complete invoice information
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedInvoice && (
+            <div className="space-y-6">
+              {/* Invoice Header */}
+              <div className="bg-muted p-4 rounded-lg">
+                <div className="grid grid-cols-2 gap-4">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Invoice Number</p>
+                    <p className="text-lg font-mono font-semibold">{selectedInvoice.invoiceNumber}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <StatusBadge status={selectedInvoice.status} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Invoice Details */}
+              <div className="grid grid-cols-2 gap-6">
+                <div>
+                  <h3 className="font-semibold mb-3">Invoice Information</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Customer</p>
+                      <p className="font-medium">{getCustomerName(selectedInvoice.customerId)}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Place of Supply</p>
+                      <p className="font-medium">{selectedInvoice.placeOfSupply}</p>
+                    </div>
+                  </div>
+                </div>
+                <div>
+                  <h3 className="font-semibold mb-3">Dates</h3>
+                  <div className="space-y-2">
+                    <div>
+                      <p className="text-sm text-muted-foreground">Invoice Date</p>
+                      <p className="font-medium">{format(new Date(selectedInvoice.invoiceDate), "MMM dd, yyyy")}</p>
+                    </div>
+                    <div>
+                      <p className="text-sm text-muted-foreground">Due Date</p>
+                      <p className="font-medium">{format(new Date(selectedInvoice.dueDate), "MMM dd, yyyy")}</p>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Line Items */}
+              {selectedInvoice.items && selectedInvoice.items.length > 0 && (
+                <div>
+                  <h3 className="font-semibold mb-3">Line Items</h3>
+                  <div className="border rounded-lg overflow-hidden">
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Description</TableHead>
+                          <TableHead>HSN/SAC</TableHead>
+                          <TableHead className="text-right">Qty</TableHead>
+                          <TableHead className="text-right">Rate</TableHead>
+                          <TableHead className="text-right">Tax %</TableHead>
+                          <TableHead className="text-right">Amount</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {selectedInvoice.items.map((item: any, index: number) => (
+                          <TableRow key={index}>
+                            <TableCell>{item.description}</TableCell>
+                            <TableCell>{item.hsnCode || '-'}</TableCell>
+                            <TableCell className="text-right">{item.quantity}</TableCell>
+                            <TableCell className="text-right">₹{Number(item.rate).toFixed(2)}</TableCell>
+                            <TableCell className="text-right">{item.taxRate}%</TableCell>
+                            <TableCell className="text-right font-semibold">₹{Number(item.total).toFixed(2)}</TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              )}
+
+              {/* Totals */}
+              <div className="flex justify-end">
+                <div className="w-80 space-y-2">
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">Subtotal:</span>
+                    <span className="font-semibold">₹{Number(selectedInvoice.subtotal).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">CGST:</span>
+                    <span className="font-semibold">₹{Number(selectedInvoice.cgst).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">SGST:</span>
+                    <span className="font-semibold">₹{Number(selectedInvoice.sgst).toFixed(2)}</span>
+                  </div>
+                  {Number(selectedInvoice.igst) > 0 && (
+                    <div className="flex justify-between py-2">
+                      <span className="text-muted-foreground">IGST:</span>
+                      <span className="font-semibold">₹{Number(selectedInvoice.igst).toFixed(2)}</span>
+                    </div>
+                  )}
+                  <div className="flex justify-between py-3 border-t">
+                    <span className="text-lg font-semibold">Total:</span>
+                    <span className="text-lg font-bold">₹{Number(selectedInvoice.total).toFixed(2)}</span>
+                  </div>
+                  <div className="flex justify-between py-2">
+                    <span className="text-muted-foreground">Amount Due:</span>
+                    <span className="font-semibold text-destructive">₹{Number(selectedInvoice.amountDue).toFixed(2)}</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
+              {selectedInvoice.notes && (
+                <div>
+                  <h3 className="font-semibold mb-2">Notes</h3>
+                  <p className="text-sm text-muted-foreground p-3 bg-muted rounded-md">{selectedInvoice.notes}</p>
+                </div>
+              )}
+
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} data-testid="button-close-view">
+                  Close
+                </Button>
+                <Button onClick={() => handleDownloadPDF(selectedInvoice)} data-testid="button-download-from-view">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download PDF
+                </Button>
+              </DialogFooter>
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
