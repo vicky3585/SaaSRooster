@@ -9,6 +9,7 @@ import {
   Settings,
   Building2,
   ChevronDown,
+  Target,
 } from "lucide-react";
 import {
   Sidebar,
@@ -41,25 +42,39 @@ const menuItems = [
     url: "/reports",
     icon: FileText,
   },
+];
+
+const crmItems = [
+  {
+    title: "Leads",
+    url: "/leads",
+    icon: Target,
+  },
   {
     title: "Customers",
     url: "/customers",
     icon: Users,
   },
+];
+
+const billingItems = [
   {
     title: "Invoices",
     url: "/invoices",
     icon: Receipt,
   },
   {
-    title: "Inventory",
-    url: "/inventory",
-    icon: Package,
-  },
-  {
     title: "Expenses",
     url: "/expenses",
     icon: TrendingDown,
+  },
+];
+
+const managementItems = [
+  {
+    title: "Inventory",
+    url: "/inventory",
+    icon: Package,
   },
   {
     title: "Staff",
@@ -102,10 +117,76 @@ export function AppSidebar() {
       </SidebarHeader>
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Navigation</SidebarGroupLabel>
+          <SidebarGroupLabel>Overview</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>CRM</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {crmItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Billing</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {billingItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton
+                    asChild
+                    isActive={location === item.url}
+                    data-testid={`nav-${item.title.toLowerCase()}`}
+                  >
+                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
+                      <item.icon className="w-4 h-4" />
+                      <span>{item.title}</span>
+                    </a>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+
+        <SidebarGroup>
+          <SidebarGroupLabel>Management</SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {managementItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton
                     asChild
