@@ -161,6 +161,26 @@ export const planEnum = pgEnum("plan", [
   "enterprise",
 ]);
 
+export const billingCycleEnum = pgEnum("billing_cycle", [
+  "monthly",
+  "quarterly",
+  "annually",
+]);
+
+export const paymentStatusEnum = pgEnum("payment_status", [
+  "pending",
+  "processing",
+  "completed",
+  "failed",
+  "refunded",
+]);
+
+export const paymentMethodEnum = pgEnum("payment_method", [
+  "razorpay",
+  "stripe",
+  "manual",
+]);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -318,6 +338,61 @@ export const users = pgTable("users", {
   role: userRoleEnum("role").default("viewer"),
   isSuperAdmin: boolean("is_super_admin").default(false), // Deprecated, use role instead
   createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Subscription Plans (Platform-wide plans managed by admin)
+export const subscriptionPlans = pgTable("subscription_plans", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // "Starter", "Professional", "Enterprise"
+  description: text("description"),
+  monthlyPrice: decimal("monthly_price", { precision: 10, scale: 2 }).notNull(),
+  quarterlyPrice: decimal("quarterly_price", { precision: 10, scale: 2 }),
+  annualPrice: decimal("annual_price", { precision: 10, scale: 2 }),
+  currency: text("currency").default("INR"),
+  features: jsonb("features").$type<string[]>(), // Array of feature descriptions
+  limits: jsonb("limits").$type<{
+    maxUsers?: number;
+    maxInvoicesPerMonth?: number;
+    maxCustomers?: number;
+    maxWarehouses?: number;
+    storageGB?: number;
+  }>(),
+  isActive: boolean("is_active").default(true),
+  isPopular: boolean("is_popular").default(false),
+  sortOrder: integer("sort_order").default(0),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Payment Transactions
+export const paymentTransactions = pgTable("payment_transactions", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  orgId: varchar("org_id")
+    .notNull()
+    .references(() => organizations.id, { onDelete: "cascade" }),
+  planId: varchar("plan_id").references(() => subscriptionPlans.id),
+  amount: decimal("amount", { precision: 10, scale: 2 }).notNull(),
+  currency: text("currency").default("INR"),
+  status: paymentStatusEnum("status").notNull().default("pending"),
+  paymentMethod: paymentMethodEnum("payment_method").notNull(),
+  paymentGatewayId: text("payment_gateway_id"), // Razorpay/Stripe transaction ID
+  paymentGatewayResponse: jsonb("payment_gateway_response"),
+  billingCycle: billingCycleEnum("billing_cycle"),
+  notes: text("notes"),
+  paidAt: timestamp("paid_at"),
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+}, (table) => ({
+  orgIdIdx: index("payment_transactions_org_id_idx").on(table.orgId),
+}));
+
+// Platform Settings (for admin configuration)
+export const platformSettings = pgTable("platform_settings", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  key: text("key").notNull().unique(),
+  value: jsonb("value"),
+  description: text("description"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
 
@@ -1439,6 +1514,23 @@ export const insertUserSchema = createInsertSchema(users).omit({
   updatedAt: true,
 });
 
+export const insertSubscriptionPlanSchema = createInsertSchema(subscriptionPlans).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPaymentTransactionSchema = createInsertSchema(paymentTransactions).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPlatformSettingSchema = createInsertSchema(platformSettings).omit({
+  id: true,
+  updatedAt: true,
+});
+
 export const insertMembershipSchema = createInsertSchema(memberships).omit({
   id: true,
   createdAt: true,
@@ -1678,6 +1770,15 @@ export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
 
 export type User = typeof users.$inferSelect;
 export type InsertUser = z.infer<typeof insertUserSchema>;
+
+export type SubscriptionPlan = typeof subscriptionPlans.$inferSelect;
+export type InsertSubscriptionPlan = z.infer<typeof insertSubscriptionPlanSchema>;
+
+export type PaymentTransaction = typeof paymentTransactions.$inferSelect;
+export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSchema>;
+
+export type PlatformSetting = typeof platformSettings.$inferSelect;
+export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
 
 export type Membership = typeof memberships.$inferSelect;
 export type InsertMembership = z.infer<typeof insertMembershipSchema>;
