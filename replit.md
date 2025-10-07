@@ -1,8 +1,10 @@
-# BillSync - Multi-Tenant SaaS Billing & Accounting Portal
+# Ledgix - Multi-Tenant SaaS Billing & Accounting Portal
 
 ## Overview
 
-BillSync is a production-ready, multi-tenant SaaS billing and accounting portal designed specifically for Indian businesses with GST compliance. The application provides comprehensive financial management capabilities including invoicing, customer management, expense tracking, inventory management, and GST-compliant reporting.
+Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal designed specifically for Indian businesses with GST compliance. The application provides comprehensive financial management capabilities including invoicing, customer management, expense tracking, inventory management, and GST-compliant reporting.
+
+**Copyright © 2025 Flying Venture System. All rights reserved.**
 
 **Key Features:**
 - Multi-tenant architecture with organization-based isolation

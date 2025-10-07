@@ -84,7 +84,8 @@ export function AppSidebar() {
             <Building2 className="w-6 h-6 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-sidebar-foreground">BillSync</h2>
+            <h2 className="text-lg font-bold text-sidebar-foreground">Ledgix</h2>
+            <p className="text-[10px] text-sidebar-foreground/60">Ledger + Logic</p>
             <DropdownMenu>
               <DropdownMenuTrigger className="flex items-center gap-1 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors" data-testid="button-org-switcher">
                 <span>Acme Corporation</span>
@@ -126,6 +127,7 @@ export function AppSidebar() {
         <div className="text-xs text-sidebar-foreground/70">
           <p>FY 2024-25</p>
           <p className="text-[10px] mt-1">GSTIN: 29ABCDE1234F1Z5</p>
+          <p className="text-[10px] mt-2 text-sidebar-foreground/50">© {new Date().getFullYear()} Flying Venture System</p>
         </div>
       </SidebarFooter>
     </Sidebar>
