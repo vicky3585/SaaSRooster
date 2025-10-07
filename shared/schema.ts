@@ -812,6 +812,19 @@ export const insertInvoiceSchema = createInsertSchema(invoices).omit({
   updatedAt: true,
   pdfUrl: true,
   sentAt: true,
+}).extend({
+  cgst: z.string().optional().default("0"),
+  sgst: z.string().optional().default("0"),
+  igst: z.string().optional().default("0"),
+  tcs: z.string().optional().default("0"),
+  tds: z.string().optional().default("0"),
+  roundOff: z.string().optional().default("0"),
+  amountPaid: z.string().optional().default("0"),
+  isReverseCharge: z.boolean().optional().default(false),
+  isComposition: z.boolean().optional().default(false),
+  notes: z.string().optional(),
+  termsAndConditions: z.string().optional(),
+  createdBy: z.string().optional(),
 });
 
 export const insertInvoiceItemSchema = createInsertSchema(invoiceItems).omit({

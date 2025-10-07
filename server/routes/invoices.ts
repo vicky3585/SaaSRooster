@@ -55,6 +55,8 @@ router.post("/", async (req: AuthRequest, res) => {
     res.status(201).json(invoice);
   } catch (error) {
     if (error instanceof z.ZodError) {
+      console.error("Validation error creating invoice:", JSON.stringify(error.errors, null, 2));
+      console.error("Request body:", JSON.stringify(req.body, null, 2));
       return res.status(400).json({
         message: "Validation error",
         errors: error.errors,
