@@ -4,7 +4,7 @@ import { storage } from "../storage";
 import { insertInvoiceSchema, type Invoice } from "@shared/schema";
 import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { validateOrgAccess } from "../middleware/orgIsolation";
-import { generateInvoiceNumber, previewNextInvoiceNumber } from "../services/invoiceNumbering";
+import { generateInvoiceNumber, previewNextInvoiceNumber, generateQuotationNumber, previewNextQuotationNumber } from "../services/invoiceNumbering";
 import { generateInvoiceHTML } from "../services/pdfGenerator";
 import { sendInvoiceEmail } from "../services/emailService";
 
@@ -37,6 +37,87 @@ router.get("/next-number", async (req: AuthRequest, res) => {
     res.json({ invoiceNumber: nextNumber });
   } catch (error) {
     console.error("Get next invoice number error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/next-quotation-number", async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.currentOrgId;
+    if (!orgId) {
+      return res.status(400).json({ message: "No organization selected" });
+    }
+    const nextNumber = await previewNextQuotationNumber(orgId);
+    res.json({ quotationNumber: nextNumber });
+  } catch (error) {
+    console.error("Get next quotation number error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.post("/quotations", async (req: AuthRequest, res) => {
+  try {
+    const orgId = req.user!.currentOrgId;
+    if (!orgId) {
+      return res.status(400).json({ message: "No organization selected" });
+    }
+    
+    // Generate quotation number
+    const quotationNumber = await generateQuotationNumber(orgId);
+    
+    // Extract items from request body
+    const { items: invoiceItemsData, ...quotationData } = req.body;
+    
+    // Get customer to determine place of supply
+    const customer = await storage.getCustomerById(quotationData.customerId);
+    const placeOfSupply = customer?.placeOfSupply || customer?.billingState || "Unknown";
+    
+    // Calculate amount due (same as total for new quotations)
+    const total = parseFloat(quotationData.total || "0");
+    
+    const body = insertInvoiceSchema.parse({
+      ...quotationData,
+      invoiceNumber: quotationNumber,
+      orgId,
+      placeOfSupply,
+      amountDue: total.toString(),
+      status: "draft", // Quotations are always draft
+      createdBy: req.user!.userId,
+    });
+    
+    // Create the quotation (stored as invoice with draft status)
+    const quotation = await storage.createInvoice(body);
+    
+    // Create invoice items if provided
+    if (invoiceItemsData && Array.isArray(invoiceItemsData)) {
+      for (const item of invoiceItemsData) {
+        await storage.createInvoiceItem({
+          orgId,
+          invoiceId: quotation.id,
+          itemId: item.itemId || null,
+          description: item.description,
+          hsnCode: item.hsnCode || "",
+          quantity: item.quantity,
+          rate: item.rate,
+          taxRate: item.taxRate || "0",
+          amount: item.amount,
+          taxAmount: item.taxAmount || "0",
+          total: item.total || item.amount,
+        });
+      }
+    }
+    
+    res.status(201).json(quotation);
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      console.error("Validation error creating quotation:", JSON.stringify(error.errors, null, 2));
+      console.error("Request body:", JSON.stringify(req.body, null, 2));
+      return res.status(400).json({
+        message: "Validation error",
+        errors: error.errors,
+      });
+    }
+    console.error("Create quotation error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

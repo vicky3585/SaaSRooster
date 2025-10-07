@@ -121,3 +121,99 @@ export async function generateInvoiceNumber(orgId: string): Promise<string> {
   
   return `${counter.prefix}-${counter.fiscalYear}-${String(nextValue).padStart(5, '0')}`;
 }
+
+/**
+ * Preview the next quotation number without incrementing the counter
+ * @param orgId - Organization ID
+ * @returns Preview of next quotation number (e.g., "QT-24-25-00001")
+ */
+export async function previewNextQuotationNumber(orgId: string): Promise<string> {
+  // Get organization details
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, orgId));
+  
+  if (!org) {
+    throw new Error("Organization not found");
+  }
+  
+  const prefix = "QT"; // Fixed prefix for quotations
+  const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
+  
+  // Check if counter exists for this org, entity type, and fiscal year
+  const [counter] = await db
+    .select()
+    .from(sequenceCounters)
+    .where(
+      and(
+        eq(sequenceCounters.orgId, orgId),
+        eq(sequenceCounters.entityType, "quotation"),
+        eq(sequenceCounters.fiscalYear, fiscalYear)
+      )
+    );
+  
+  const nextValue = counter ? counter.currentValue + 1 : 1;
+  return `${prefix}-${fiscalYear}-${String(nextValue).padStart(5, '0')}`;
+}
+
+/**
+ * Generate the next quotation number for an organization
+ * @param orgId - Organization ID
+ * @returns Generated quotation number (e.g., "QT-24-25-00001")
+ */
+export async function generateQuotationNumber(orgId: string): Promise<string> {
+  // Get organization details
+  const [org] = await db
+    .select()
+    .from(organizations)
+    .where(eq(organizations.id, orgId));
+  
+  if (!org) {
+    throw new Error("Organization not found");
+  }
+  
+  const prefix = "QT"; // Fixed prefix for quotations
+  const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
+  
+  // Check if counter exists for this org, entity type, and fiscal year
+  const [counter] = await db
+    .select()
+    .from(sequenceCounters)
+    .where(
+      and(
+        eq(sequenceCounters.orgId, orgId),
+        eq(sequenceCounters.entityType, "quotation"),
+        eq(sequenceCounters.fiscalYear, fiscalYear)
+      )
+    );
+  
+  if (!counter) {
+    // Create new counter starting from 1
+    const [newCounter] = await db
+      .insert(sequenceCounters)
+      .values({
+        orgId,
+        entityType: "quotation",
+        fiscalYear,
+        prefix,
+        currentValue: 1,
+      })
+      .returning();
+    
+    return `${newCounter.prefix}-${newCounter.fiscalYear}-${String(newCounter.currentValue).padStart(5, '0')}`;
+  }
+  
+  // Increment existing counter
+  const nextValue = counter.currentValue + 1;
+  
+  await db
+    .update(sequenceCounters)
+    .set({ 
+      currentValue: nextValue,
+      updatedAt: new Date(),
+    })
+    .where(eq(sequenceCounters.id, counter.id));
+  
+  return `${counter.prefix}-${counter.fiscalYear}-${String(nextValue).padStart(5, '0')}`;
+}

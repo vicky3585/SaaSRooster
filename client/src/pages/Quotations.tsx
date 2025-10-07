@@ -51,6 +51,12 @@ export default function Quotations() {
     queryKey: ["/api/items"],
   });
 
+  // Fetch next quotation number
+  const { data: quotationNumberData } = useQuery<{ quotationNumber: string }>({
+    queryKey: ["/api/invoices/next-quotation-number"],
+    enabled: dialogOpen,
+  });
+
   // Form state
   const [customerId, setCustomerId] = useState("");
   const [invoiceDate, setInvoiceDate] = useState(format(new Date(), 'yyyy-MM-dd'));
@@ -74,11 +80,12 @@ export default function Quotations() {
 
   const createQuotationMutation = useMutation({
     mutationFn: async (data: any) => {
-      const response = await apiRequest("POST", "/api/invoices", data);
+      const response = await apiRequest("POST", "/api/invoices/quotations", data);
       return response.json();
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices/next-quotation-number"] });
       setDialogOpen(false);
       resetForm();
       toast({
@@ -265,6 +272,24 @@ export default function Quotations() {
           <DialogHeader>
             <DialogTitle>Create New Quotation</DialogTitle>
           </DialogHeader>
+
+          {/* Quotation Number Display */}
+          {quotationNumberData && (
+            <div className="bg-primary/5 border border-primary/20 rounded-md p-4">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm text-muted-foreground">Quotation Number</p>
+                  <p className="text-2xl font-bold font-mono text-primary">
+                    {quotationNumberData.quotationNumber}
+                  </p>
+                </div>
+                <div className="text-right">
+                  <p className="text-sm text-muted-foreground">Status</p>
+                  <p className="text-lg font-semibold">Draft</p>
+                </div>
+              </div>
+            </div>
+          )}
           
           <form onSubmit={handleSubmit} className="space-y-6">
             <div className="grid grid-cols-2 gap-4">
