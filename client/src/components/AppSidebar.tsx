@@ -10,6 +10,7 @@ import {
   Building2,
   ChevronDown,
   Target,
+  UserCircle,
 } from "lucide-react";
 import {
   Sidebar,
@@ -49,6 +50,16 @@ const crmItems = [
     title: "Leads",
     url: "/leads",
     icon: Target,
+  },
+  {
+    title: "Accounts",
+    url: "/accounts",
+    icon: Building2,
+  },
+  {
+    title: "Contacts",
+    url: "/contacts",
+    icon: UserCircle,
   },
   {
     title: "Customers",
