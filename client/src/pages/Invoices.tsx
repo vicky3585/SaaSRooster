@@ -39,10 +39,10 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import StatusBadge from "@/components/StatusBadge";
-import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2 } from "lucide-react";
-import { useState } from "react";
+import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2, X } from "lucide-react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -50,15 +50,23 @@ import { useToast } from "@/hooks/use-toast";
 import type { Invoice, Customer } from "@shared/schema";
 import { format } from "date-fns";
 
+const lineItemSchema = z.object({
+  itemId: z.string().optional(),
+  description: z.string().min(1, "Description is required"),
+  hsnCode: z.string().optional(),
+  quantity: z.number().min(0.01, "Quantity must be greater than 0"),
+  rate: z.number().min(0, "Rate cannot be negative"),
+  taxRate: z.number().min(0).max(100, "Tax rate must be between 0 and 100"),
+});
+
 const invoiceFormSchema = z.object({
   customerId: z.string().min(1, "Customer is required"),
-  invoiceNumber: z.string().min(1, "Invoice number is required"),
   invoiceDate: z.string().min(1, "Invoice date is required"),
   dueDate: z.string().min(1, "Due date is required"),
   placeOfSupply: z.string().min(1, "Place of supply is required"),
-  subtotal: z.string().min(1, "Subtotal is required"),
-  total: z.string().min(1, "Total is required"),
+  lineItems: z.array(lineItemSchema).min(1, "At least one line item is required"),
   status: z.enum(["draft", "sent", "paid", "overdue", "partial", "void", "pending"]),
+  notes: z.string().optional(),
 });
 
 type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
@@ -66,6 +74,7 @@ type InvoiceFormValues = z.infer<typeof invoiceFormSchema>;
 export default function Invoices() {
   const [searchQuery, setSearchQuery] = useState("");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [nextInvoiceNumber, setNextInvoiceNumber] = useState("");
   const { toast } = useToast();
 
   const { data: invoices = [], isLoading } = useQuery<Invoice[]>({
@@ -76,30 +85,95 @@ export default function Invoices() {
     queryKey: ["/api/customers"],
   });
 
+  const { data: items = [] } = useQuery<any[]>({
+    queryKey: ["/api/items"],
+  });
+
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
       customerId: "",
-      invoiceNumber: "",
       invoiceDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
       placeOfSupply: "",
-      subtotal: "0",
-      total: "0",
+      lineItems: [{ description: "", hsnCode: "", quantity: 1, rate: 0, taxRate: 18 }],
       status: "draft",
+      notes: "",
     },
   });
 
+  const { fields, append, remove } = useFieldArray({
+    control: form.control,
+    name: "lineItems",
+  });
+
+  // Fetch next invoice number when dialog opens
+  useEffect(() => {
+    if (isDialogOpen) {
+      fetchNextInvoiceNumber();
+    }
+  }, [isDialogOpen]);
+
+  const fetchNextInvoiceNumber = async () => {
+    try {
+      const response = await apiRequest("GET", "/api/invoices/next-number");
+      const data = await response.json();
+      setNextInvoiceNumber(data.invoiceNumber);
+    } catch (error) {
+      console.error("Failed to fetch next invoice number:", error);
+    }
+  };
+
   const createMutation = useMutation({
     mutationFn: async (data: InvoiceFormValues) => {
+      const lineItems = data.lineItems;
+      
+      // Calculate subtotal and tax
+      let subtotal = 0;
+      let cgst = 0;
+      let sgst = 0;
+      let igst = 0;
+      
+      const invoiceItems = lineItems.map(item => {
+        const amount = item.quantity * item.rate;
+        const taxAmount = (amount * item.taxRate) / 100;
+        subtotal += amount;
+        
+        // Assume CGST/SGST for now (can be improved with state comparison)
+        cgst += taxAmount / 2;
+        sgst += taxAmount / 2;
+        
+        return {
+          itemId: item.itemId,
+          description: item.description,
+          hsnCode: item.hsnCode || "",
+          quantity: item.quantity.toString(),
+          rate: item.rate.toString(),
+          taxRate: item.taxRate.toString(),
+          amount: amount.toString(),
+          taxAmount: taxAmount.toString(),
+          total: (amount + taxAmount).toString(),
+        };
+      });
+      
+      const total = subtotal + cgst + sgst + igst;
+      
       const payload = {
-        ...data,
+        customerId: data.customerId,
         invoiceDate: new Date(data.invoiceDate).toISOString(),
         dueDate: new Date(data.dueDate).toISOString(),
-        subtotal: data.subtotal,
-        total: data.total,
-        amountDue: data.total,
+        placeOfSupply: data.placeOfSupply,
+        subtotal: subtotal.toString(),
+        cgst: cgst.toString(),
+        sgst: sgst.toString(),
+        igst: igst.toString(),
+        total: total.toString(),
+        amountDue: total.toString(),
+        status: data.status,
+        notes: data.notes,
+        items: invoiceItems,
       };
+      
       const response = await apiRequest("POST", "/api/invoices", payload);
       return response.json();
     },
@@ -165,6 +239,47 @@ export default function Invoices() {
     return customer?.name || "Unknown";
   };
 
+  const handleItemSelect = (index: number, itemId: string) => {
+    const selectedItem = items.find(i => i.id === itemId);
+    if (selectedItem) {
+      form.setValue(`lineItems.${index}.itemId`, itemId);
+      form.setValue(`lineItems.${index}.description`, selectedItem.name);
+      form.setValue(`lineItems.${index}.hsnCode`, selectedItem.hsnCode || "");
+      form.setValue(`lineItems.${index}.rate`, Number(selectedItem.price));
+      form.setValue(`lineItems.${index}.taxRate`, Number(selectedItem.taxRate || 18));
+    }
+  };
+
+  const calculateLineTotal = (index: number) => {
+    const quantity = form.watch(`lineItems.${index}.quantity`) || 0;
+    const rate = form.watch(`lineItems.${index}.rate`) || 0;
+    const taxRate = form.watch(`lineItems.${index}.taxRate`) || 0;
+    const amount = quantity * rate;
+    const taxAmount = (amount * taxRate) / 100;
+    return amount + taxAmount;
+  };
+
+  const calculateTotals = () => {
+    const lineItems = form.watch("lineItems") || [];
+    let subtotal = 0;
+    let totalTax = 0;
+    
+    lineItems.forEach(item => {
+      const amount = (item.quantity || 0) * (item.rate || 0);
+      const taxAmount = (amount * (item.taxRate || 0)) / 100;
+      subtotal += amount;
+      totalTax += taxAmount;
+    });
+    
+    return {
+      subtotal,
+      tax: totalTax,
+      total: subtotal + totalTax,
+    };
+  };
+
+  const totals = calculateTotals();
+
   return (
     <div className="p-6 space-y-6" data-testid="page-invoices">
       <div className="flex items-center justify-between">
@@ -219,7 +334,7 @@ export default function Invoices() {
               </TableRow>
             ) : (
               filteredInvoices.map((invoice) => (
-                <TableRow key={invoice.id} className="hover:bg-muted/50" data-testid={`row-invoice-${invoice.id}`}>
+                <TableRow key={invoice.id} className="hover-elevate" data-testid={`row-invoice-${invoice.id}`}>
                   <TableCell className="font-mono text-sm">{invoice.invoiceNumber}</TableCell>
                   <TableCell>{getCustomerName(invoice.customerId)}</TableCell>
                   <TableCell className="text-sm">{format(new Date(invoice.invoiceDate), "MMM dd, yyyy")}</TableCell>
@@ -263,23 +378,38 @@ export default function Invoices() {
       </Card>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-6xl max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Create Invoice</DialogTitle>
             <DialogDescription>
-              Create a new invoice for your customer
+              Create a new professional invoice with line items
             </DialogDescription>
           </DialogHeader>
 
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-4">
+            <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+              {/* Invoice Number Display */}
+              <div className="bg-muted p-4 rounded-lg">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <p className="text-sm text-muted-foreground">Invoice Number</p>
+                    <p className="text-lg font-mono font-semibold">{nextInvoiceNumber || "Loading..."}</p>
+                  </div>
+                  <div className="text-right">
+                    <p className="text-sm text-muted-foreground">Status</p>
+                    <StatusBadge status={form.watch("status")} />
+                  </div>
+                </div>
+              </div>
+
+              {/* Basic Details */}
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="customerId"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Customer</FormLabel>
+                      <FormLabel>Customer *</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger data-testid="select-customer">
@@ -301,12 +431,12 @@ export default function Invoices() {
 
                 <FormField
                   control={form.control}
-                  name="invoiceNumber"
+                  name="placeOfSupply"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Invoice Number</FormLabel>
+                      <FormLabel>Place of Supply *</FormLabel>
                       <FormControl>
-                        <Input {...field} placeholder="INV/24-25/001" data-testid="input-invoice-number" />
+                        <Input {...field} placeholder="e.g., Karnataka" data-testid="input-place-of-supply" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -314,13 +444,13 @@ export default function Invoices() {
                 />
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <FormField
                   control={form.control}
                   name="invoiceDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Invoice Date</FormLabel>
+                      <FormLabel>Invoice Date *</FormLabel>
                       <FormControl>
                         <Input {...field} type="date" data-testid="input-invoice-date" />
                       </FormControl>
@@ -334,7 +464,7 @@ export default function Invoices() {
                   name="dueDate"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Due Date</FormLabel>
+                      <FormLabel>Due Date *</FormLabel>
                       <FormControl>
                         <Input {...field} type="date" data-testid="input-due-date" />
                       </FormControl>
@@ -342,74 +472,222 @@ export default function Invoices() {
                     </FormItem>
                   )}
                 />
+
+                <FormField
+                  control={form.control}
+                  name="status"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Status</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-status">
+                            <SelectValue placeholder="Select status" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="draft">Draft</SelectItem>
+                          <SelectItem value="sent">Sent</SelectItem>
+                          <SelectItem value="paid">Paid</SelectItem>
+                          <SelectItem value="pending">Pending</SelectItem>
+                          <SelectItem value="partial">Partial</SelectItem>
+                          <SelectItem value="overdue">Overdue</SelectItem>
+                          <SelectItem value="void">Void</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </div>
 
+              {/* Line Items */}
+              <div className="space-y-4">
+                <div className="flex items-center justify-between">
+                  <h3 className="text-lg font-semibold">Line Items</h3>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    onClick={() => append({ description: "", hsnCode: "", quantity: 1, rate: 0, taxRate: 18 })}
+                    data-testid="button-add-line-item"
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Add Item
+                  </Button>
+                </div>
+
+                <div className="border rounded-lg overflow-hidden">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead className="w-[250px]">Item / Description *</TableHead>
+                        <TableHead className="w-[120px]">HSN/SAC</TableHead>
+                        <TableHead className="w-[100px]">Qty *</TableHead>
+                        <TableHead className="w-[120px]">Rate *</TableHead>
+                        <TableHead className="w-[100px]">Tax % *</TableHead>
+                        <TableHead className="w-[120px]">Total</TableHead>
+                        <TableHead className="w-[60px]"></TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {fields.map((field, index) => (
+                        <TableRow key={field.id}>
+                          <TableCell>
+                            <div className="space-y-2">
+                              <Select
+                                onValueChange={(value) => handleItemSelect(index, value)}
+                                value={form.watch(`lineItems.${index}.itemId`) || ""}
+                              >
+                                <SelectTrigger data-testid={`select-item-${index}`}>
+                                  <SelectValue placeholder="Select item..." />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {items.map((item) => (
+                                    <SelectItem key={item.id} value={item.id}>
+                                      {item.name}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                              <FormField
+                                control={form.control}
+                                name={`lineItems.${index}.description`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormControl>
+                                      <Input {...field} placeholder="Description" data-testid={`input-description-${index}`} />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineItems.${index}.hsnCode`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input {...field} placeholder="HSN" data-testid={`input-hsn-${index}`} />
+                                  </FormControl>
+                                </FormItem>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineItems.${index}.quantity`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      step="0.01"
+                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                      data-testid={`input-quantity-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineItems.${index}.rate`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      step="0.01"
+                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                      data-testid={`input-rate-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell>
+                            <FormField
+                              control={form.control}
+                              name={`lineItems.${index}.taxRate`}
+                              render={({ field }) => (
+                                <FormItem>
+                                  <FormControl>
+                                    <Input
+                                      {...field}
+                                      type="number"
+                                      step="0.01"
+                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                      data-testid={`input-tax-rate-${index}`}
+                                    />
+                                  </FormControl>
+                                  <FormMessage />
+                                </FormItem>
+                              )}
+                            />
+                          </TableCell>
+                          <TableCell className="font-semibold">
+                            ₹{calculateLineTotal(index).toFixed(2)}
+                          </TableCell>
+                          <TableCell>
+                            {fields.length > 1 && (
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                onClick={() => remove(index)}
+                                data-testid={`button-remove-item-${index}`}
+                              >
+                                <X className="w-4 h-4" />
+                              </Button>
+                            )}
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+
+                {/* Totals */}
+                <div className="flex justify-end">
+                  <div className="w-80 space-y-2">
+                    <div className="flex justify-between py-2">
+                      <span className="text-muted-foreground">Subtotal:</span>
+                      <span className="font-semibold">₹{totals.subtotal.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-2">
+                      <span className="text-muted-foreground">Tax:</span>
+                      <span className="font-semibold">₹{totals.tax.toFixed(2)}</span>
+                    </div>
+                    <div className="flex justify-between py-3 border-t">
+                      <span className="text-lg font-semibold">Total:</span>
+                      <span className="text-lg font-bold">₹{totals.total.toFixed(2)}</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Notes */}
               <FormField
                 control={form.control}
-                name="placeOfSupply"
+                name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Place of Supply</FormLabel>
+                    <FormLabel>Notes (Optional)</FormLabel>
                     <FormControl>
-                      <Input {...field} placeholder="Karnataka" data-testid="input-place-of-supply" />
+                      <Input {...field} placeholder="Add any additional notes..." data-testid="input-notes" />
                     </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-
-              <div className="grid grid-cols-2 gap-4">
-                <FormField
-                  control={form.control}
-                  name="subtotal"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Subtotal</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" placeholder="0.00" data-testid="input-subtotal" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-
-                <FormField
-                  control={form.control}
-                  name="total"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Total</FormLabel>
-                      <FormControl>
-                        <Input {...field} type="number" placeholder="0.00" data-testid="input-total" />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-
-              <FormField
-                control={form.control}
-                name="status"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger data-testid="select-status">
-                          <SelectValue placeholder="Select status" />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="draft">Draft</SelectItem>
-                        <SelectItem value="sent">Sent</SelectItem>
-                        <SelectItem value="paid">Paid</SelectItem>
-                        <SelectItem value="pending">Pending</SelectItem>
-                        <SelectItem value="partial">Partial</SelectItem>
-                        <SelectItem value="overdue">Overdue</SelectItem>
-                        <SelectItem value="void">Void</SelectItem>
-                      </SelectContent>
-                    </Select>
                     <FormMessage />
                   </FormItem>
                 )}

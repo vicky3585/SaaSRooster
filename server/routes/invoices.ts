@@ -68,14 +68,38 @@ router.post("/", async (req: AuthRequest, res) => {
     // Generate invoice number if not provided
     const invoiceNumber = req.body.invoiceNumber || await generateInvoiceNumber(orgId);
     
+    // Extract items from request body
+    const { items: invoiceItemsData, ...invoiceData } = req.body;
+    
     const body = insertInvoiceSchema.parse({
-      ...req.body,
+      ...invoiceData,
       invoiceNumber,
       orgId,
       createdBy: req.user!.userId,
     });
     
+    // Create the invoice
     const invoice = await storage.createInvoice(body);
+    
+    // Create invoice items if provided
+    if (invoiceItemsData && Array.isArray(invoiceItemsData)) {
+      for (const item of invoiceItemsData) {
+        await storage.createInvoiceItem({
+          orgId,
+          invoiceId: invoice.id,
+          itemId: item.itemId || null,
+          description: item.description,
+          hsnCode: item.hsnCode || "",
+          quantity: item.quantity,
+          rate: item.rate,
+          taxRate: item.taxRate || "0",
+          amount: item.amount,
+          taxAmount: item.taxAmount,
+          total: item.total,
+        });
+      }
+    }
+    
     res.status(201).json(invoice);
   } catch (error) {
     if (error instanceof z.ZodError) {
