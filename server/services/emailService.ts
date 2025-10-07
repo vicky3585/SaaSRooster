@@ -83,16 +83,13 @@ export async function sendInvoiceEmail(
     const { subject, body } = await generateEmailContent(data);
 
     // Generate PDF attachment
-    console.log('Generating PDF for invoice:', invoice.invoiceNumber);
     const pdfBuffer = await generateInvoicePDF(data);
-    console.log('PDF generated, size:', pdfBuffer.length, 'bytes');
 
     // Using verified domain hugenetwork.in
     const fromEmail = 'invoices@hugenetwork.in';
     const fromName = organization.name || 'Invoice';
 
     // Only use replyTo if it's from the verified domain
-    // If org email is gmail/yahoo/etc, don't set replyTo to avoid Resend validation error
     const isVerifiedDomain = organization.email?.endsWith('@hugenetwork.in');
     
     const result = await resend.emails.send({
@@ -110,7 +107,7 @@ export async function sendInvoiceEmail(
     });
 
     if (result.error) {
-      console.error("Resend API error:", JSON.stringify(result.error, null, 2));
+      console.error("Email sending failed:", result.error.message);
       return { success: false, error: result.error.message };
     }
 

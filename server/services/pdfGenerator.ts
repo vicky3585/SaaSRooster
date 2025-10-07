@@ -142,8 +142,6 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
   const html = generateInvoiceHTML(data);
   
-  console.log('Generating PDF with html-pdf-node...');
-  
   const file = { content: html };
   const options = { 
     format: 'A4',
@@ -158,10 +156,9 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
 
   try {
     const pdfBuffer = await htmlPdf.generatePdf(file, options);
-    console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
     return pdfBuffer as Buffer;
   } catch (error) {
-    console.error('Error generating PDF:', error);
-    throw error;
+    console.error('PDF generation failed:', error);
+    throw new Error('Failed to generate PDF. Please try again.');
   }
 }

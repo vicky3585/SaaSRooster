@@ -214,51 +214,6 @@ router.get("/:id/pdf", async (req: AuthRequest, res) => {
   }
 });
 
-// Test PDF generation endpoint
-router.get("/:id/test-pdf", async (req: AuthRequest, res) => {
-  try {
-    const invoice = await storage.getInvoiceById(req.params.id);
-    
-    if (!invoice) {
-      return res.status(404).json({ message: "Invoice not found" });
-    }
-    
-    if (invoice.orgId !== req.user!.currentOrgId) {
-      return res.status(403).json({ message: "Access denied" });
-    }
-    
-    // Get all related data
-    const [items, customer, organization] = await Promise.all([
-      storage.getInvoiceItemsByInvoice(invoice.id),
-      storage.getCustomerById(invoice.customerId),
-      storage.getOrganizationById(invoice.orgId),
-    ]);
-    
-    if (!customer || !organization) {
-      return res.status(500).json({ message: "Failed to load invoice data" });
-    }
-    
-    // Test PDF generation
-    const { generateInvoicePDF } = await import("../services/pdfGenerator");
-    const pdfBuffer = await generateInvoicePDF({
-      invoice,
-      items,
-      customer,
-      organization,
-    });
-    
-    res.setHeader('Content-Type', 'application/pdf');
-    res.setHeader('Content-Disposition', `attachment; filename="invoice-${invoice.invoiceNumber}.pdf"`);
-    res.send(pdfBuffer);
-  } catch (error) {
-    console.error("Test PDF generation error:", error);
-    res.status(500).json({ 
-      message: "PDF generation failed", 
-      error: error instanceof Error ? error.message : 'Unknown error' 
-    });
-  }
-});
-
 router.post("/:id/send", async (req: AuthRequest, res) => {
   try {
     const invoice = await storage.getInvoiceById(req.params.id);
@@ -302,21 +257,23 @@ router.post("/:id/send", async (req: AuthRequest, res) => {
     
     if (!result.success) {
       console.error("Email send failed:", result.error);
-      return res.status(500).json({ message: result.error || "Failed to send email" });
+      return res.status(500).json({ 
+        message: result.error || "Failed to send invoice email. Please try again." 
+      });
     }
 
-    // Update invoice status to 'sent' if it was draft
-    if (invoice.status === 'draft') {
-      await storage.updateInvoice(invoice.id, { status: 'sent' });
-    }
+    // Update invoice status to 'sent' after successful email delivery
+    await storage.updateInvoice(invoice.id, { status: 'sent' });
     
     res.json({ 
-      message: "Invoice sent successfully",
+      message: "Invoice sent successfully to customer",
       messageId: result.messageId 
     });
   } catch (error) {
     console.error("Send invoice error:", error);
-    res.status(500).json({ message: "Internal server error" });
+    res.status(500).json({ 
+      message: error instanceof Error ? error.message : "Failed to send invoice. Please try again."
+    });
   }
 });
 
