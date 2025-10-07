@@ -40,6 +40,8 @@ import subscriptionPlansRoutes from "./routes/subscriptionPlans";
 import platformSettingsRoutes from "./routes/platformSettings";
 import paymentGatewaysRoutes from "./routes/paymentGateways";
 import subscriptionPaymentsRoutes from "./routes/subscriptionPayments";
+import purchaseOrdersRoutes from "./routes/purchaseOrders";
+import purchaseInvoicesRoutes from "./routes/purchaseInvoices";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 import { authenticateToken } from "./middleware/auth";
 
@@ -67,6 +69,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/customers", authenticateToken, requireActiveSubscription, customersRoutes);
   app.use("/api/vendors", authenticateToken, requireActiveSubscription, vendorsRoutes);
   app.use("/api/invoices", authenticateToken, requireActiveSubscription, invoicesRoutes);
+  app.use("/api/purchase-orders", authenticateToken, requireActiveSubscription, purchaseOrdersRoutes);
+  app.use("/api/purchase-invoices", authenticateToken, requireActiveSubscription, purchaseInvoicesRoutes);
   app.use("/api/warehouses", authenticateToken, requireActiveSubscription, warehousesRoutes);
   app.use("/api/items", authenticateToken, requireActiveSubscription, itemsRoutes);
   app.use("/api/stock-transactions", authenticateToken, requireActiveSubscription, stockTransactionsRoutes);
