@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { queryClient } from "@/lib/queryClient";
 import { adminApiRequest } from "@/pages/AdminPanel";
@@ -27,31 +27,30 @@ export default function AdminSettings() {
   const { data: settings, isLoading } = useQuery({
     queryKey: ["/api/admin/settings"],
     queryFn: async () => {
-      const result = await adminApiRequest("GET", "/api/admin/settings");
-      
-      // Pre-populate form with existing settings
-      if (result.settings) {
-        result.settings.forEach((setting: any) => {
-          if (setting.key === "razorpay_key_id") setPaymentGateway(prev => ({ ...prev, razorpayKeyId: setting.value }));
-          if (setting.key === "razorpay_key_secret") setPaymentGateway(prev => ({ ...prev, razorpayKeySecret: setting.value }));
-          if (setting.key === "stripe_publishable_key") setPaymentGateway(prev => ({ ...prev, stripePublishableKey: setting.value }));
-          if (setting.key === "stripe_secret_key") setPaymentGateway(prev => ({ ...prev, stripeSecretKey: setting.value }));
-          if (setting.key === "trial_duration_days") setTrialDuration(setting.value);
-        });
-      }
-
-      // Load PayUmoney config
-      if (result.payumoney_config) {
-        setPayumoneyConfig({
-          merchantKey: result.payumoney_config.merchantKey || "",
-          merchantSalt: result.payumoney_config.merchantSalt || "",
-          mode: result.payumoney_config.mode || "test",
-        });
-      }
-      
-      return result;
+      return await adminApiRequest("GET", "/api/admin/settings");
     },
   });
+
+  // Update form state when settings data changes
+  useEffect(() => {
+    if (settings) {
+      // Update payment gateway settings
+      if (settings.razorpay_key_id) setPaymentGateway(prev => ({ ...prev, razorpayKeyId: settings.razorpay_key_id }));
+      if (settings.razorpay_key_secret) setPaymentGateway(prev => ({ ...prev, razorpayKeySecret: settings.razorpay_key_secret }));
+      if (settings.stripe_publishable_key) setPaymentGateway(prev => ({ ...prev, stripePublishableKey: settings.stripe_publishable_key }));
+      if (settings.stripe_secret_key) setPaymentGateway(prev => ({ ...prev, stripeSecretKey: settings.stripe_secret_key }));
+      if (settings.trial_duration_days) setTrialDuration(settings.trial_duration_days);
+
+      // Update PayUmoney config
+      if (settings.payumoney_config) {
+        setPayumoneyConfig({
+          merchantKey: settings.payumoney_config.merchantKey || "",
+          merchantSalt: settings.payumoney_config.merchantSalt || "",
+          mode: settings.payumoney_config.mode || "test",
+        });
+      }
+    }
+  }, [settings]);
 
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: any) => {
