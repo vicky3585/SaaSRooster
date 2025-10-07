@@ -78,20 +78,22 @@ export async function sendInvoiceEmail(
     return { success: false, error: 'Customer email not found' };
   }
 
-  if (!organization.email) {
-    return { success: false, error: 'Organization email not configured' };
-  }
-
   try {
     const { subject, body } = await generateEmailContent(data);
 
     const emailBody = `${body.replace(/\n/g, '<br>')}<br><br><hr><br>${invoiceHTML}`;
 
+    // Use Resend's onboarding domain for testing
+    // To use custom domain: verify your domain at https://resend.com/domains
+    const fromEmail = 'onboarding@resend.dev';
+    const fromName = organization.name || 'Invoice';
+
     const result = await resend.emails.send({
-      from: `${organization.name} <${organization.email}>`,
+      from: `${fromName} <${fromEmail}>`,
       to: customer.email,
       subject: subject,
       html: emailBody,
+      replyTo: organization.email || undefined,
     });
 
     if (result.error) {
