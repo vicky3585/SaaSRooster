@@ -46,9 +46,17 @@ export function getStateName(code: string): string {
   return state ? state.name : code;
 }
 
-// Helper function to get state code from name
-export function getStateCode(name: string): string {
-  const state = INDIAN_STATES.find(s => s.name === name);
+// Helper function to get state code from name or return if already a code
+export function getStateCode(nameOrCode: string): string {
+  if (!nameOrCode) return "";
+  
+  // If it's already a 2-digit code, return it
+  if (/^\d{2}$/.test(nameOrCode.trim())) {
+    return nameOrCode.trim();
+  }
+  
+  // Otherwise, find by name
+  const state = INDIAN_STATES.find(s => s.name === nameOrCode);
   return state ? state.code : "";
 }
 
@@ -58,11 +66,31 @@ export function extractStateCodeFromGSTIN(gstin: string): string {
   return gstin.substring(0, 2);
 }
 
+// Helper function to normalize state to code (handles name, code, or GSTIN)
+export function normalizeToStateCode(stateOrGstin: string, gstin?: string): string {
+  if (!stateOrGstin) {
+    // Fallback to GSTIN if provided
+    return gstin ? extractStateCodeFromGSTIN(gstin) : "";
+  }
+  
+  // Check if it's already a valid state code
+  if (/^\d{2}$/.test(stateOrGstin.trim())) {
+    return stateOrGstin.trim();
+  }
+  
+  // Try to get code from state name
+  const codeFromName = getStateCode(stateOrGstin);
+  if (codeFromName) return codeFromName;
+  
+  // Last resort: try to extract from GSTIN
+  return gstin ? extractStateCodeFromGSTIN(gstin) : "";
+}
+
 // Helper function to determine if transaction is intra-state
-export function isIntraStateTransaction(orgState: string, placeOfSupply: string): boolean {
-  const orgStateCode = getStateCode(orgState);
-  const posStateCode = placeOfSupply.includes("-") ? placeOfSupply.split("-")[0].trim() : getStateCode(placeOfSupply);
-  return orgStateCode === posStateCode;
+export function isIntraStateTransaction(orgState: string, placeOfSupply: string, orgGstin?: string): boolean {
+  const orgStateCode = normalizeToStateCode(orgState, orgGstin);
+  const posStateCode = placeOfSupply.includes("-") ? placeOfSupply.split("-")[0].trim() : normalizeToStateCode(placeOfSupply);
+  return orgStateCode === posStateCode && orgStateCode !== "";
 }
 
 // Helper function to format state for display (with code)
