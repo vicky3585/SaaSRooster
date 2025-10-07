@@ -24,6 +24,10 @@ import Contacts from "@/pages/Contacts";
 import Deals from "@/pages/Deals";
 import ChartOfAccounts from "@/pages/ChartOfAccounts";
 import Tickets from "@/pages/Tickets";
+import Quotations from "@/pages/Quotations";
+import ProformaInvoice from "@/pages/ProformaInvoice";
+import PurchaseOrders from "@/pages/PurchaseOrders";
+import PurchaseInvoices from "@/pages/PurchaseInvoices";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -60,6 +64,10 @@ function AuthenticatedRouter() {
       <Route path="/deals" component={() => <ProtectedRoute component={Deals} />} />
       <Route path="/chart-of-accounts" component={() => <ProtectedRoute component={ChartOfAccounts} />} />
       <Route path="/tickets" component={() => <ProtectedRoute component={Tickets} />} />
+      <Route path="/quotations" component={() => <ProtectedRoute component={Quotations} />} />
+      <Route path="/proforma" component={() => <ProtectedRoute component={ProformaInvoice} />} />
+      <Route path="/purchase-orders" component={() => <ProtectedRoute component={PurchaseOrders} />} />
+      <Route path="/purchase-invoices" component={() => <ProtectedRoute component={PurchaseInvoices} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
