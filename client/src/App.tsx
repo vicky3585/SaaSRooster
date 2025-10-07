@@ -30,6 +30,9 @@ import PurchaseOrders from "@/pages/PurchaseOrders";
 import PurchaseInvoices from "@/pages/PurchaseInvoices";
 import AdminPanel from "@/pages/AdminPanel";
 import AdminLogin from "@/pages/AdminLogin";
+import SubscriptionPayment from "@/pages/SubscriptionPayment";
+import PaymentSuccess from "@/pages/PaymentSuccess";
+import PaymentFailed from "@/pages/PaymentFailed";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -97,6 +100,9 @@ function PublicRouter() {
       <Route path="/admin" component={() => <AdminRoute component={AdminPanel} />} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
+      <Route path="/subscription/payment" component={SubscriptionPayment} />
+      <Route path="/subscription/payment-success" component={PaymentSuccess} />
+      <Route path="/subscription/payment-failed" component={PaymentFailed} />
       <Route path="/" component={() => <Redirect to="/login" />} />
       <Route component={() => <Redirect to="/login" />} />
     </Switch>
@@ -138,6 +144,15 @@ function AppContent() {
 
   // Admin panel should be standalone without sidebar/header
   if (location.startsWith("/admin")) {
+    return (
+      <div className="min-h-screen">
+        <Router />
+      </div>
+    );
+  }
+
+  // Subscription payment and related pages should also be standalone
+  if (location.startsWith("/subscription")) {
     return (
       <div className="min-h-screen">
         <Router />

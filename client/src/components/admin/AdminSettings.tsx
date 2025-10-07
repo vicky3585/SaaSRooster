@@ -17,6 +17,11 @@ export default function AdminSettings() {
     stripePublishableKey: "",
     stripeSecretKey: "",
   });
+  const [payumoneyConfig, setPayumoneyConfig] = useState({
+    merchantKey: "",
+    merchantSalt: "",
+    mode: "test",
+  });
   const [trialDuration, setTrialDuration] = useState("14");
 
   const { data: settings, isLoading } = useQuery({
@@ -32,6 +37,15 @@ export default function AdminSettings() {
           if (setting.key === "stripe_publishable_key") setPaymentGateway(prev => ({ ...prev, stripePublishableKey: setting.value }));
           if (setting.key === "stripe_secret_key") setPaymentGateway(prev => ({ ...prev, stripeSecretKey: setting.value }));
           if (setting.key === "trial_duration_days") setTrialDuration(setting.value);
+        });
+      }
+
+      // Load PayUmoney config
+      if (result.payumoney_config) {
+        setPayumoneyConfig({
+          merchantKey: result.payumoney_config.merchantKey || "",
+          merchantSalt: result.payumoney_config.merchantSalt || "",
+          mode: result.payumoney_config.mode || "test",
         });
       }
       
@@ -67,6 +81,24 @@ export default function AdminSettings() {
       { key: "stripe_secret_key", value: paymentGateway.stripeSecretKey, category: "payment" },
     ];
     updateSettingsMutation.mutate({ settings: settingsToSave });
+  };
+
+  const handleSavePayumoneySettings = () => {
+    // Validate fields
+    if (!payumoneyConfig.merchantKey || !payumoneyConfig.merchantSalt) {
+      toast({
+        title: "Validation Error",
+        description: "Merchant Key and Merchant Salt are required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    updateSettingsMutation.mutate({
+      key: "payumoney_config",
+      value: payumoneyConfig,
+      description: "PayUmoney payment gateway configuration for subscription payments"
+    });
   };
 
   const handleSaveTrialSettings = () => {
@@ -168,6 +200,71 @@ export default function AdminSettings() {
               >
                 <Save className="w-4 h-4 mr-2" />
                 {updateSettingsMutation.isPending ? "Saving..." : "Save Payment Settings"}
+              </Button>
+            </div>
+          </div>
+        </Card>
+
+        {/* PayUmoney Settings for Subscription Payments */}
+        <Card className="p-6">
+          <div className="flex items-center gap-3 mb-6">
+            <SettingsIcon className="w-5 h-5 text-primary" />
+            <h3 className="font-semibold text-lg">PayUmoney Configuration (Subscription Payments)</h3>
+          </div>
+          
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Configure PayUmoney for processing subscription payments when organizations sign up.
+            </p>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="payumoney-merchant-key">Merchant Key</Label>
+                <Input
+                  id="payumoney-merchant-key"
+                  type="text"
+                  value={payumoneyConfig.merchantKey}
+                  onChange={(e) => setPayumoneyConfig({ ...payumoneyConfig, merchantKey: e.target.value })}
+                  placeholder="Enter PayUmoney Merchant Key"
+                  data-testid="input-payumoney-merchant-key"
+                />
+              </div>
+              <div>
+                <Label htmlFor="payumoney-merchant-salt">Merchant Salt</Label>
+                <Input
+                  id="payumoney-merchant-salt"
+                  type="password"
+                  value={payumoneyConfig.merchantSalt}
+                  onChange={(e) => setPayumoneyConfig({ ...payumoneyConfig, merchantSalt: e.target.value })}
+                  placeholder="Enter PayUmoney Merchant Salt"
+                  data-testid="input-payumoney-merchant-salt"
+                />
+              </div>
+              <div>
+                <Label htmlFor="payumoney-mode">Mode</Label>
+                <select
+                  id="payumoney-mode"
+                  value={payumoneyConfig.mode}
+                  onChange={(e) => setPayumoneyConfig({ ...payumoneyConfig, mode: e.target.value })}
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors file:border-0 file:bg-transparent file:text-sm file:font-medium focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  data-testid="select-payumoney-mode"
+                >
+                  <option value="test" data-testid="option-payumoney-test">Test (Sandbox)</option>
+                  <option value="live" data-testid="option-payumoney-live">Live (Production)</option>
+                </select>
+                <p className="text-xs text-muted-foreground mt-1">
+                  Use test mode for testing, live mode for production
+                </p>
+              </div>
+            </div>
+
+            <div className="pt-4">
+              <Button
+                onClick={handleSavePayumoneySettings}
+                disabled={updateSettingsMutation.isPending}
+                data-testid="button-save-payumoney-settings"
+              >
+                <Save className="w-4 h-4 mr-2" />
+                {updateSettingsMutation.isPending ? "Saving..." : "Save PayUmoney Settings"}
               </Button>
             </div>
           </div>
