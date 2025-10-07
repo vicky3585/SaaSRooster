@@ -19,7 +19,8 @@ router.get("/organizations", async (req: any, res) => {
         gstin: organizations.gstin,
         createdAt: organizations.createdAt,
       })
-      .from(organizations);
+      .from(organizations)
+      .where(eq(organizations.isActive, true));
 
     // Get member counts for each organization
     const orgsWithCounts = await Promise.all(
