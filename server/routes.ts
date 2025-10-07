@@ -39,6 +39,7 @@ import adminAuthRoutes from "./routes/adminAuth";
 import subscriptionPlansRoutes from "./routes/subscriptionPlans";
 import platformSettingsRoutes from "./routes/platformSettings";
 import paymentGatewaysRoutes from "./routes/paymentGateways";
+import subscriptionPaymentsRoutes from "./routes/subscriptionPayments";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -52,6 +53,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Auth routes (no subscription check for login/signup)
   app.use("/api/auth", authRoutes);
+  
+  // Subscription payment routes (public access for signup/payment)
+  app.use("/api/subscription-payments", subscriptionPaymentsRoutes);
   
   // Apply trial status checker to all org routes
   app.use("/api", checkTrialStatus);
