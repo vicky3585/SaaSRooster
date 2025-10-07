@@ -52,7 +52,7 @@ import {
   tasks,
 } from "@shared/schema";
 import { db } from "./db";
-import { eq, and, sql, lt } from "drizzle-orm";
+import { eq, and, sql, lt, isNull } from "drizzle-orm";
 import crypto from "crypto";
 
 export interface IStorage {
@@ -522,7 +522,7 @@ export class DbStorage implements IStorage {
     const result = await db
       .select()
       .from(refreshTokens)
-      .where(and(eq(refreshTokens.tokenHash, tokenHash), eq(refreshTokens.revokedAt, sql`NULL`)))
+      .where(and(eq(refreshTokens.tokenHash, tokenHash), isNull(refreshTokens.revokedAt)))
       .limit(1);
     return result[0] || null;
   }
