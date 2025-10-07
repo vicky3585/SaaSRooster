@@ -8,6 +8,7 @@ import warehousesRoutes from "./routes/warehouses";
 import itemsRoutes from "./routes/items";
 import stockTransactionsRoutes from "./routes/stockTransactions";
 import expensesRoutes from "./routes/expenses";
+import membershipsRoutes from "./routes/memberships";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -19,6 +20,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/items", itemsRoutes);
   app.use("/api/stock-transactions", stockTransactionsRoutes);
   app.use("/api/expenses", expensesRoutes);
+  app.use("/api/memberships", membershipsRoutes);
 
   const httpServer = createServer(app);
 

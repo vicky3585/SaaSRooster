@@ -53,10 +53,13 @@ export interface IStorage {
   createOrganization(org: InsertOrganization): Promise<Organization>;
   updateOrganization(id: string, updates: Partial<InsertOrganization>): Promise<Organization | null>;
   
+  getMembershipById(id: string): Promise<Membership | null>;
   getMembershipByUserAndOrg(userId: string, orgId: string): Promise<Membership | null>;
   getMembershipsByUserId(userId: string): Promise<Membership[]>;
+  getMembershipsByOrg(orgId: string): Promise<Membership[]>;
   createMembership(membership: InsertMembership): Promise<Membership>;
   updateMembershipRole(id: string, role: string): Promise<Membership | null>;
+  deleteMembership(id: string): Promise<boolean>;
   
   getCustomersByOrg(orgId: string): Promise<Customer[]>;
   getCustomerById(id: string): Promise<Customer | null>;
@@ -166,6 +169,11 @@ export class DbStorage implements IStorage {
     return result[0] || null;
   }
 
+  async getMembershipById(id: string): Promise<Membership | null> {
+    const result = await db.select().from(memberships).where(eq(memberships.id, id)).limit(1);
+    return result[0] || null;
+  }
+
   async getMembershipByUserAndOrg(userId: string, orgId: string): Promise<Membership | null> {
     const result = await db
       .select()
@@ -177,6 +185,10 @@ export class DbStorage implements IStorage {
 
   async getMembershipsByUserId(userId: string): Promise<Membership[]> {
     return await db.select().from(memberships).where(eq(memberships.userId, userId));
+  }
+
+  async getMembershipsByOrg(orgId: string): Promise<Membership[]> {
+    return await db.select().from(memberships).where(eq(memberships.orgId, orgId));
   }
 
   async createMembership(membership: InsertMembership): Promise<Membership> {
@@ -191,6 +203,11 @@ export class DbStorage implements IStorage {
       .where(eq(memberships.id, id))
       .returning();
     return result[0] || null;
+  }
+
+  async deleteMembership(id: string): Promise<boolean> {
+    const result = await db.delete(memberships).where(eq(memberships.id, id)).returning();
+    return result.length > 0;
   }
 
   async getCustomersByOrg(orgId: string): Promise<Customer[]> {
