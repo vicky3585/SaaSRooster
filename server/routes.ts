@@ -4,6 +4,9 @@ import cookieParser from "cookie-parser";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import customersRoutes from "./routes/customers";
+import warehousesRoutes from "./routes/warehouses";
+import itemsRoutes from "./routes/items";
+import stockTransactionsRoutes from "./routes/stockTransactions";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -11,6 +14,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/auth", authRoutes);
   app.use("/api/users", usersRoutes);
   app.use("/api/customers", customersRoutes);
+  app.use("/api/warehouses", warehousesRoutes);
+  app.use("/api/items", itemsRoutes);
+  app.use("/api/stock-transactions", stockTransactionsRoutes);
 
   const httpServer = createServer(app);
 

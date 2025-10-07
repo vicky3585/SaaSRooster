@@ -104,6 +104,7 @@ export interface IStorage {
   updateExpense(id: string, updates: Partial<InsertExpense>): Promise<Expense | null>;
   deleteExpense(id: string): Promise<boolean>;
   
+  getStockTransactionsByOrg(orgId: string): Promise<StockTransaction[]>;
   getStockTransactionsByItem(itemId: string): Promise<StockTransaction[]>;
   
   createStockTransaction(txn: InsertStockTransaction): Promise<StockTransaction>;
@@ -399,6 +400,10 @@ export class DbStorage implements IStorage {
   async deleteExpense(id: string): Promise<boolean> {
     const result = await db.delete(expenses).where(eq(expenses.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getStockTransactionsByOrg(orgId: string): Promise<StockTransaction[]> {
+    return await db.select().from(stockTransactions).where(eq(stockTransactions.orgId, orgId));
   }
 
   async getStockTransactionsByItem(itemId: string): Promise<StockTransaction[]> {
