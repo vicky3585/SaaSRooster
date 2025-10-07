@@ -6,6 +6,15 @@ Bizverse is a production-ready, multi-tenant SaaS billing and accounting portal 
 
 ## Recent Changes
 
+### Quotation PDF Download Feature (October 2025)
+- **Download Quotations as PDF**: Quotations can now be downloaded and viewed in PDF format
+  - Download button added to quotations table with intuitive Download icon
+  - Backend route `/api/invoices/:id/pdf` generates and serves actual PDF files
+  - PDF filename automatically reflects document type: `quotation-{number}.pdf` for quotations, `invoice-{number}.pdf` for invoices
+  - Uses html-pdf-node library with Puppeteer for high-quality PDF generation
+  - Proper error handling and user feedback via toast notifications
+  - Secure: Requires authentication and validates organization access
+
 ### Editable Invoice Numbers (October 2025)
 - **Custom Invoice Numbers**: Invoice numbers are now fully editable during invoice creation
   - Auto-populated with next sequential number (e.g., "INV-2024-001")
