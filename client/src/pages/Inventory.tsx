@@ -69,6 +69,7 @@ type StockTransaction = {
 const itemFormSchema = insertItemSchema.omit({ orgId: true }).extend({
   price: z.string().min(1, "Price is required"),
   taxRate: z.string().optional(),
+  stockQuantity: z.coerce.number().min(0, "Stock quantity must be 0 or more").optional(),
   lowStockThreshold: z.coerce.number().min(0).optional(),
 });
 
@@ -110,6 +111,7 @@ export default function Inventory() {
       unit: "PCS",
       price: "",
       taxRate: "18.00",
+      stockQuantity: 0,
       lowStockThreshold: 10,
       defaultWarehouseId: "",
       isService: false,
@@ -270,6 +272,7 @@ export default function Inventory() {
       unit: item.unit || "PCS",
       price: item.price,
       taxRate: item.taxRate || "18.00",
+      stockQuantity: item.stockQuantity,
       lowStockThreshold: item.lowStockThreshold,
       defaultWarehouseId: item.defaultWarehouseId || "",
       isService: item.isService,
@@ -435,7 +438,7 @@ export default function Inventory() {
                       />
                     </div>
 
-                    <div className="grid grid-cols-3 gap-4">
+                    <div className="grid grid-cols-2 gap-4">
                       <FormField
                         control={itemForm.control}
                         name="price"
@@ -457,6 +460,22 @@ export default function Inventory() {
                             <FormLabel>Tax Rate (%)</FormLabel>
                             <FormControl>
                               <Input type="number" step="0.01" {...field} data-testid="input-item-tax-rate" />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={itemForm.control}
+                        name="stockQuantity"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Initial Stock Quantity</FormLabel>
+                            <FormControl>
+                              <Input type="number" {...field} data-testid="input-item-stock-quantity" />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
