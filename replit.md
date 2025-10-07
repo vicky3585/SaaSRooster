@@ -44,6 +44,37 @@ Bizverse is a production-ready, multi-tenant SaaS billing and accounting portal 
   - Security: Only platform_admin role can access, includes audit logging with IP and user agent tracking
   - API endpoint: `POST /api/admin/users/:userId/reset-password`
 
+### Purchase Management System (October 2025)
+- **Purchase Orders**: Complete purchase order management for vendor transactions
+  - Create, edit, and delete purchase orders with multi-item support
+  - Vendor selection with automatic data population
+  - Order status tracking (draft, sent, confirmed, received, cancelled)
+  - Automatic calculation of subtotals, taxes, and totals
+  - Item catalog integration with auto-populated descriptions, HSN codes, and rates
+  - Real-time calculation triggers when items are selected or quantities/rates change
+  - Dashboard statistics showing total orders, pending confirmations, confirmed orders, and total value
+  - Secure multi-tenant isolation with orgId validation
+  - API endpoints: GET/POST `/api/purchase-orders`, GET/PUT/DELETE `/api/purchase-orders/:id`, GET `/api/purchase-orders/:id/items`
+  
+- **Purchase Invoices**: Vendor invoice recording and payables tracking
+  - Record and manage vendor invoices with full CRUD operations
+  - Invoice number entry with date tracking (invoice date and due date)
+  - Status management (draft, sent, paid, partial, overdue, void)
+  - Multi-item invoice support with automatic calculations
+  - GST tracking for input credit claims
+  - Payment tracking with amount due calculation
+  - Dashboard showing total invoices, pending payments, paid invoices, and total amount due
+  - Item selection auto-fills descriptions, HSN codes, and purchase rates
+  - Dialog state management prevents data carry-over between operations
+  - API endpoints: GET/POST `/api/purchase-invoices`, GET/PUT/DELETE `/api/purchase-invoices/:id`, GET `/api/purchase-invoices/:id/items`
+
+- **Key Technical Improvements**:
+  - **Calculation Fix**: Item selection now triggers immediate recalculation of amounts, tax, and totals
+  - **Dialog State Management**: Proper reset on close prevents data leakage between create/edit operations
+  - **Security Enhancement**: Update endpoints use `.partial().omit({ orgId: true, createdBy: true })` to prevent client tampering
+  - **Field Naming Convention**: Uses `purchaseOrderId`/`purchaseInvoiceId` (not `orderId`/`invoiceId`) for clear item relationships
+  - **Pattern Consistency**: Purchase management follows identical patterns to sales invoicing for maintainability
+
 ## User Preferences
 
 Preferred communication style: Simple, everyday language.
