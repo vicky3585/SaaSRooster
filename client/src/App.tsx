@@ -54,6 +54,16 @@ function ProtectedRoute({ component: Component }: { component: React.ComponentTy
   return <Component />;
 }
 
+function AdminRoute({ component: Component }: { component: React.ComponentType }) {
+  const adminToken = localStorage.getItem("adminAccessToken");
+
+  if (!adminToken) {
+    return <Redirect to="/admin/login" />;
+  }
+
+  return <Component />;
+}
+
 function AuthenticatedRouter() {
   return (
     <Switch>
@@ -70,7 +80,6 @@ function AuthenticatedRouter() {
       <Route path="/proforma" component={() => <ProtectedRoute component={ProformaInvoice} />} />
       <Route path="/purchase-orders" component={() => <ProtectedRoute component={PurchaseOrders} />} />
       <Route path="/purchase-invoices" component={() => <ProtectedRoute component={PurchaseInvoices} />} />
-      <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
@@ -84,9 +93,10 @@ function AuthenticatedRouter() {
 function PublicRouter() {
   return (
     <Switch>
+      <Route path="/admin/login" component={AdminLogin} />
+      <Route path="/admin" component={() => <AdminRoute component={AdminPanel} />} />
       <Route path="/login" component={Login} />
       <Route path="/signup" component={Signup} />
-      <Route path="/admin/login" component={AdminLogin} />
       <Route path="/" component={() => <Redirect to="/login" />} />
       <Route component={() => <Redirect to="/login" />} />
     </Switch>
@@ -95,6 +105,7 @@ function PublicRouter() {
 
 function Router() {
   const { user, isLoading } = useAuth();
+  const [location] = useLocation();
 
   if (isLoading) {
     return (
@@ -104,15 +115,35 @@ function Router() {
     );
   }
 
+  // Allow admin routes even without regular user login
+  if (location.startsWith("/admin")) {
+    return (
+      <Switch>
+        <Route path="/admin/login" component={AdminLogin} />
+        <Route path="/admin" component={() => <AdminRoute component={AdminPanel} />} />
+      </Switch>
+    );
+  }
+
   return user ? <AuthenticatedRouter /> : <PublicRouter />;
 }
 
 function AppContent() {
   const { user } = useAuth();
+  const [location] = useLocation();
   const style = {
     "--sidebar-width": "16rem",
     "--sidebar-width-icon": "3rem",
   };
+
+  // Admin panel should be standalone without sidebar/header
+  if (location.startsWith("/admin")) {
+    return (
+      <div className="min-h-screen">
+        <Router />
+      </div>
+    );
+  }
 
   if (!user) {
     return (
