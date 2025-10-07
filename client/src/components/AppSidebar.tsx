@@ -25,6 +25,7 @@ import {
   FileSpreadsheet,
   CreditCard,
   StickyNote,
+  Shield,
 } from "lucide-react";
 import {
   Sidebar,
@@ -404,6 +405,19 @@ export function AppSidebar() {
                 <a href="/settings" onClick={handleNavigation("/settings")}>
                   <Settings className="w-4 h-4" />
                   <span>Settings</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/admin"}
+                data-testid="nav-admin"
+              >
+                <a href="/admin" onClick={handleNavigation("/admin")}>
+                  <Shield className="w-4 h-4" />
+                  <span>Admin Panel</span>
                 </a>
               </SidebarMenuButton>
             </SidebarMenuItem>
