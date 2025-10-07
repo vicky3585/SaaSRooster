@@ -39,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import StatusBadge from "@/components/StatusBadge";
-import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2, X, Sparkles, Wand2 } from "lucide-react";
+import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2, X, Sparkles, Wand2, Send } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -271,6 +271,27 @@ export default function Invoices() {
     onError: (error: any) => {
       toast({
         title: "Failed to delete invoice",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendMutation = useMutation({
+    mutationFn: async (id: string) => {
+      const response = await apiRequest("POST", `/api/invoices/${id}/send`);
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/invoices"] });
+      toast({
+        title: "Invoice sent successfully!",
+        description: "The invoice has been emailed to the customer with an AI-generated message",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to send invoice",
         description: error.message || "Something went wrong",
         variant: "destructive",
       });
@@ -594,6 +615,19 @@ export default function Invoices() {
                         <DropdownMenuItem className="gap-2" onClick={() => handleEditInvoice(invoice)} data-testid={`menu-edit-${invoice.id}`}>
                           <Edit className="w-4 h-4" />
                           Edit
+                        </DropdownMenuItem>
+                        <DropdownMenuItem 
+                          className="gap-2" 
+                          onClick={() => sendMutation.mutate(invoice.id)} 
+                          disabled={sendMutation.isPending}
+                          data-testid={`menu-send-${invoice.id}`}
+                        >
+                          {sendMutation.isPending ? (
+                            <Loader2 className="w-4 h-4 animate-spin" />
+                          ) : (
+                            <Send className="w-4 h-4" />
+                          )}
+                          Send to Customer
                         </DropdownMenuItem>
                         <DropdownMenuItem className="gap-2" onClick={() => handleDownloadPDF(invoice)} data-testid={`menu-download-${invoice.id}`}>
                           <Download className="w-4 h-4" />
@@ -1127,6 +1161,23 @@ export default function Invoices() {
               <DialogFooter>
                 <Button variant="outline" onClick={() => setIsViewDialogOpen(false)} data-testid="button-close-view">
                   Close
+                </Button>
+                <Button 
+                  onClick={() => sendMutation.mutate(selectedInvoice.id)} 
+                  disabled={sendMutation.isPending}
+                  data-testid="button-send-from-view"
+                >
+                  {sendMutation.isPending ? (
+                    <>
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                      Sending...
+                    </>
+                  ) : (
+                    <>
+                      <Send className="w-4 h-4 mr-2" />
+                      Send to Customer
+                    </>
+                  )}
                 </Button>
                 <Button onClick={() => handleDownloadPDF(selectedInvoice)} data-testid="button-download-from-view">
                   <Download className="w-4 h-4 mr-2" />
