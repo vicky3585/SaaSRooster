@@ -90,6 +90,43 @@ export const taskStatusEnum = pgEnum("task_status", [
   "cancelled",
 ]);
 
+export const accountTypeEnum = pgEnum("account_type", [
+  "asset",
+  "liability",
+  "revenue",
+  "expense",
+  "equity",
+]);
+
+export const ticketStatusEnum = pgEnum("ticket_status", [
+  "open",
+  "pending",
+  "resolved",
+  "closed",
+]);
+
+export const ticketPriorityEnum = pgEnum("ticket_priority", [
+  "low",
+  "normal",
+  "high",
+  "urgent",
+]);
+
+export const journalTypeEnum = pgEnum("journal_type", [
+  "invoice",
+  "payment",
+  "manual",
+  "adjustment",
+]);
+
+export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", [
+  "daily",
+  "weekly",
+  "monthly",
+  "quarterly",
+  "yearly",
+]);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -640,6 +677,339 @@ export const tasks = pgTable(
   })
 );
 
+// CRM - Accounts (Company accounts)
+export const accounts = pgTable(
+  "accounts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    industry: text("industry"),
+    website: text("website"),
+    phone: text("phone"),
+    email: text("email"),
+    billingAddress: text("billing_address"),
+    billingCity: text("billing_city"),
+    billingState: text("billing_state"),
+    billingPincode: varchar("billing_pincode", { length: 6 }),
+    gstin: varchar("gstin", { length: 15 }),
+    pan: varchar("pan", { length: 10 }),
+    parentAccountId: varchar("parent_account_id"),
+    ownerId: varchar("owner_id").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("accounts_org_id_idx").on(table.orgId),
+    ownerIdIdx: index("accounts_owner_id_idx").on(table.ownerId),
+  })
+);
+
+// CRM - Contacts (Individual contacts)
+export const contacts = pgTable(
+  "contacts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    accountId: varchar("account_id").references(() => accounts.id, { onDelete: "cascade" }),
+    firstName: text("first_name").notNull(),
+    lastName: text("last_name"),
+    email: text("email"),
+    phone: text("phone"),
+    mobile: text("mobile"),
+    title: text("title"),
+    department: text("department"),
+    isPrimary: boolean("is_primary").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("contacts_org_id_idx").on(table.orgId),
+    accountIdIdx: index("contacts_account_id_idx").on(table.accountId),
+    emailIdx: index("contacts_email_idx").on(table.email),
+  })
+);
+
+// CRM - Deal Stages (Custom pipeline stages)
+export const dealStages = pgTable(
+  "deal_stages",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    displayOrder: integer("display_order").notNull().default(0),
+    probability: integer("probability").default(0),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("deal_stages_org_id_idx").on(table.orgId),
+    orderIdx: index("deal_stages_order_idx").on(table.displayOrder),
+  })
+);
+
+// Accounting - Chart of Accounts
+export const chartOfAccounts = pgTable(
+  "chart_of_accounts",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    code: text("code").notNull(),
+    name: text("name").notNull(),
+    type: accountTypeEnum("type").notNull(),
+    parentAccountId: varchar("parent_account_id"),
+    isActive: boolean("is_active").default(true),
+    description: text("description"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("coa_org_id_idx").on(table.orgId),
+    codeIdx: index("coa_code_idx").on(table.code),
+    typeIdx: index("coa_type_idx").on(table.type),
+    orgCodeUnique: unique().on(table.orgId, table.code),
+  })
+);
+
+// Accounting - Journals (Journal entry headers)
+export const journals = pgTable(
+  "journals",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    journalNumber: text("journal_number").notNull(),
+    journalDate: timestamp("journal_date").notNull(),
+    type: journalTypeEnum("type").notNull(),
+    referenceId: varchar("reference_id"),
+    description: text("description"),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("journals_org_id_idx").on(table.orgId),
+    typeIdx: index("journals_type_idx").on(table.type),
+    dateIdx: index("journals_date_idx").on(table.journalDate),
+    orgNumberUnique: unique().on(table.orgId, table.journalNumber),
+  })
+);
+
+// Accounting - Journal Entries (Journal entry lines)
+export const journalEntries = pgTable(
+  "journal_entries",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    journalId: varchar("journal_id")
+      .notNull()
+      .references(() => journals.id, { onDelete: "cascade" }),
+    accountId: varchar("account_id")
+      .notNull()
+      .references(() => chartOfAccounts.id, { onDelete: "restrict" }),
+    debit: decimal("debit", { precision: 12, scale: 2 }).default("0"),
+    credit: decimal("credit", { precision: 12, scale: 2 }).default("0"),
+    description: text("description"),
+  },
+  (table) => ({
+    journalIdIdx: index("journal_entries_journal_id_idx").on(table.journalId),
+    accountIdIdx: index("journal_entries_account_id_idx").on(table.accountId),
+  })
+);
+
+// Support - Tickets
+export const tickets = pgTable(
+  "tickets",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    ticketNumber: text("ticket_number").notNull(),
+    subject: text("subject").notNull(),
+    description: text("description"),
+    status: ticketStatusEnum("status").notNull().default("open"),
+    priority: ticketPriorityEnum("priority").notNull().default("normal"),
+    customerId: varchar("customer_id").references(() => customers.id, { onDelete: "set null" }),
+    contactId: varchar("contact_id").references(() => contacts.id, { onDelete: "set null" }),
+    assignedTo: varchar("assigned_to").references(() => users.id, { onDelete: "set null" }),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("tickets_org_id_idx").on(table.orgId),
+    statusIdx: index("tickets_status_idx").on(table.status),
+    assignedToIdx: index("tickets_assigned_to_idx").on(table.assignedTo),
+    orgNumberUnique: unique().on(table.orgId, table.ticketNumber),
+  })
+);
+
+// Support - Ticket Comments
+export const ticketComments = pgTable(
+  "ticket_comments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    ticketId: varchar("ticket_id")
+      .notNull()
+      .references(() => tickets.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    isInternal: boolean("is_internal").default(false),
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    ticketIdIdx: index("ticket_comments_ticket_id_idx").on(table.ticketId),
+  })
+);
+
+// Shared - Attachments
+export const attachments = pgTable(
+  "attachments",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    fileName: text("file_name").notNull(),
+    fileSize: integer("file_size"),
+    mimeType: text("mime_type"),
+    url: text("url").notNull(),
+    entityType: text("entity_type"),
+    entityId: varchar("entity_id"),
+    uploadedBy: varchar("uploaded_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("attachments_org_id_idx").on(table.orgId),
+    entityIdx: index("attachments_entity_idx").on(table.entityType, table.entityId),
+  })
+);
+
+// Shared - Notes
+export const notes = pgTable(
+  "notes",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    content: text("content").notNull(),
+    entityType: text("entity_type"),
+    entityId: varchar("entity_id"),
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("notes_org_id_idx").on(table.orgId),
+    entityIdx: index("notes_entity_idx").on(table.entityType, table.entityId),
+  })
+);
+
+// Shared - Teams
+export const teams = pgTable(
+  "teams",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    description: text("description"),
+    leaderId: varchar("leader_id").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("teams_org_id_idx").on(table.orgId),
+  })
+);
+
+// Shared - Team Members
+export const teamMembers = pgTable(
+  "team_members",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    teamId: varchar("team_id")
+      .notNull()
+      .references(() => teams.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    teamIdIdx: index("team_members_team_id_idx").on(table.teamId),
+    userIdIdx: index("team_members_user_id_idx").on(table.userId),
+    teamUserUnique: unique().on(table.teamId, table.userId),
+  })
+);
+
+// Billing - Recurring Invoices
+export const recurringInvoices = pgTable(
+  "recurring_invoices",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    customerId: varchar("customer_id")
+      .notNull()
+      .references(() => customers.id, { onDelete: "restrict" }),
+    templateName: text("template_name").notNull(),
+    frequency: recurrenceFrequencyEnum("frequency").notNull(),
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date"),
+    nextInvoiceDate: timestamp("next_invoice_date"),
+    isActive: boolean("is_active").default(true),
+    placeOfSupply: text("place_of_supply").notNull(),
+    subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+    taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("0"),
+    total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+    notes: text("notes"),
+    termsAndConditions: text("terms_and_conditions"),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("recurring_invoices_org_id_idx").on(table.orgId),
+    customerIdIdx: index("recurring_invoices_customer_id_idx").on(table.customerId),
+    activeIdx: index("recurring_invoices_active_idx").on(table.isActive),
+  })
+);
+
+// Billing - Recurring Invoice Items
+export const recurringInvoiceItems = pgTable(
+  "recurring_invoice_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    recurringInvoiceId: varchar("recurring_invoice_id")
+      .notNull()
+      .references(() => recurringInvoices.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id").references(() => items.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    rate: decimal("rate", { precision: 12, scale: 2 }).notNull(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+  },
+  (table) => ({
+    recurringInvoiceIdIdx: index("recurring_invoice_items_recurring_id_idx").on(table.recurringInvoiceId),
+  })
+);
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   memberships: many(memberships),
@@ -885,6 +1255,81 @@ export const insertTaskSchema = createInsertSchema(tasks).omit({
   completedAt: true,
 });
 
+export const insertAccountSchema = createInsertSchema(accounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertContactSchema = createInsertSchema(contacts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDealStageSchema = createInsertSchema(dealStages).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertChartOfAccountsSchema = createInsertSchema(chartOfAccounts).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertJournalSchema = createInsertSchema(journals).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertJournalEntrySchema = createInsertSchema(journalEntries).omit({
+  id: true,
+});
+
+export const insertTicketSchema = createInsertSchema(tickets).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTicketCommentSchema = createInsertSchema(ticketComments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertAttachmentSchema = createInsertSchema(attachments).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNoteSchema = createInsertSchema(notes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamSchema = createInsertSchema(teams).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertTeamMemberSchema = createInsertSchema(teamMembers).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertRecurringInvoiceSchema = createInsertSchema(recurringInvoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertRecurringInvoiceItemSchema = createInsertSchema(recurringInvoiceItems).omit({
+  id: true,
+});
+
 // Select Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -942,3 +1387,45 @@ export type InsertActivity = z.infer<typeof insertActivitySchema>;
 
 export type Task = typeof tasks.$inferSelect;
 export type InsertTask = z.infer<typeof insertTaskSchema>;
+
+export type Account = typeof accounts.$inferSelect;
+export type InsertAccount = z.infer<typeof insertAccountSchema>;
+
+export type Contact = typeof contacts.$inferSelect;
+export type InsertContact = z.infer<typeof insertContactSchema>;
+
+export type DealStage = typeof dealStages.$inferSelect;
+export type InsertDealStage = z.infer<typeof insertDealStageSchema>;
+
+export type ChartOfAccount = typeof chartOfAccounts.$inferSelect;
+export type InsertChartOfAccount = z.infer<typeof insertChartOfAccountsSchema>;
+
+export type Journal = typeof journals.$inferSelect;
+export type InsertJournal = z.infer<typeof insertJournalSchema>;
+
+export type JournalEntry = typeof journalEntries.$inferSelect;
+export type InsertJournalEntry = z.infer<typeof insertJournalEntrySchema>;
+
+export type Ticket = typeof tickets.$inferSelect;
+export type InsertTicket = z.infer<typeof insertTicketSchema>;
+
+export type TicketComment = typeof ticketComments.$inferSelect;
+export type InsertTicketComment = z.infer<typeof insertTicketCommentSchema>;
+
+export type Attachment = typeof attachments.$inferSelect;
+export type InsertAttachment = z.infer<typeof insertAttachmentSchema>;
+
+export type Note = typeof notes.$inferSelect;
+export type InsertNote = z.infer<typeof insertNoteSchema>;
+
+export type Team = typeof teams.$inferSelect;
+export type InsertTeam = z.infer<typeof insertTeamSchema>;
+
+export type TeamMember = typeof teamMembers.$inferSelect;
+export type InsertTeamMember = z.infer<typeof insertTeamMemberSchema>;
+
+export type RecurringInvoice = typeof recurringInvoices.$inferSelect;
+export type InsertRecurringInvoice = z.infer<typeof insertRecurringInvoiceSchema>;
+
+export type RecurringInvoiceItem = typeof recurringInvoiceItems.$inferSelect;
+export type InsertRecurringInvoiceItem = z.infer<typeof insertRecurringInvoiceItemSchema>;
