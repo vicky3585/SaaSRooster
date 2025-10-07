@@ -32,6 +32,14 @@ import {
   type InsertActivity,
   type Task,
   type InsertTask,
+  type PurchaseOrder,
+  type InsertPurchaseOrder,
+  type PurchaseOrderItem,
+  type InsertPurchaseOrderItem,
+  type PurchaseInvoice,
+  type InsertPurchaseInvoice,
+  type PurchaseInvoiceItem,
+  type InsertPurchaseInvoiceItem,
   users,
   organizations,
   memberships,
@@ -50,6 +58,10 @@ import {
   deals,
   activities,
   tasks,
+  purchaseOrders,
+  purchaseOrderItems,
+  purchaseInvoices,
+  purchaseInvoiceItems,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, lt, isNull } from "drizzle-orm";
@@ -156,6 +168,26 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, updates: Partial<InsertTask>): Promise<Task | null>;
   deleteTask(id: string): Promise<boolean>;
+  
+  getPurchaseOrdersByOrg(orgId: string): Promise<PurchaseOrder[]>;
+  getPurchaseOrderById(id: string): Promise<PurchaseOrder | null>;
+  createPurchaseOrder(order: InsertPurchaseOrder): Promise<PurchaseOrder>;
+  updatePurchaseOrder(id: string, updates: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | null>;
+  deletePurchaseOrder(id: string): Promise<boolean>;
+  
+  getPurchaseOrderItemsByOrder(orderId: string): Promise<PurchaseOrderItem[]>;
+  createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem>;
+  deletePurchaseOrderItemsByOrder(orderId: string): Promise<void>;
+  
+  getPurchaseInvoicesByOrg(orgId: string): Promise<PurchaseInvoice[]>;
+  getPurchaseInvoiceById(id: string): Promise<PurchaseInvoice | null>;
+  createPurchaseInvoice(invoice: InsertPurchaseInvoice): Promise<PurchaseInvoice>;
+  updatePurchaseInvoice(id: string, updates: Partial<InsertPurchaseInvoice>): Promise<PurchaseInvoice | null>;
+  deletePurchaseInvoice(id: string): Promise<boolean>;
+  
+  getPurchaseInvoiceItemsByInvoice(invoiceId: string): Promise<PurchaseInvoiceItem[]>;
+  createPurchaseInvoiceItem(item: InsertPurchaseInvoiceItem): Promise<PurchaseInvoiceItem>;
+  deletePurchaseInvoiceItemsByInvoice(invoiceId: string): Promise<void>;
 }
 
 export class DbStorage implements IStorage {
@@ -657,6 +689,88 @@ export class DbStorage implements IStorage {
   async deleteTask(id: string): Promise<boolean> {
     const result = await db.delete(tasks).where(eq(tasks.id, id)).returning();
     return result.length > 0;
+  }
+
+  async getPurchaseOrdersByOrg(orgId: string): Promise<PurchaseOrder[]> {
+    return await db.select().from(purchaseOrders).where(eq(purchaseOrders.orgId, orgId));
+  }
+
+  async getPurchaseOrderById(id: string): Promise<PurchaseOrder | null> {
+    const result = await db.select().from(purchaseOrders).where(eq(purchaseOrders.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createPurchaseOrder(order: InsertPurchaseOrder): Promise<PurchaseOrder> {
+    const result = await db.insert(purchaseOrders).values(order).returning();
+    return result[0];
+  }
+
+  async updatePurchaseOrder(id: string, updates: Partial<InsertPurchaseOrder>): Promise<PurchaseOrder | null> {
+    const result = await db
+      .update(purchaseOrders)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(purchaseOrders.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deletePurchaseOrder(id: string): Promise<boolean> {
+    const result = await db.delete(purchaseOrders).where(eq(purchaseOrders.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getPurchaseOrderItemsByOrder(orderId: string): Promise<PurchaseOrderItem[]> {
+    return await db.select().from(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+  }
+
+  async createPurchaseOrderItem(item: InsertPurchaseOrderItem): Promise<PurchaseOrderItem> {
+    const result = await db.insert(purchaseOrderItems).values(item).returning();
+    return result[0];
+  }
+
+  async deletePurchaseOrderItemsByOrder(orderId: string): Promise<void> {
+    await db.delete(purchaseOrderItems).where(eq(purchaseOrderItems.purchaseOrderId, orderId));
+  }
+
+  async getPurchaseInvoicesByOrg(orgId: string): Promise<PurchaseInvoice[]> {
+    return await db.select().from(purchaseInvoices).where(eq(purchaseInvoices.orgId, orgId));
+  }
+
+  async getPurchaseInvoiceById(id: string): Promise<PurchaseInvoice | null> {
+    const result = await db.select().from(purchaseInvoices).where(eq(purchaseInvoices.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createPurchaseInvoice(invoice: InsertPurchaseInvoice): Promise<PurchaseInvoice> {
+    const result = await db.insert(purchaseInvoices).values(invoice).returning();
+    return result[0];
+  }
+
+  async updatePurchaseInvoice(id: string, updates: Partial<InsertPurchaseInvoice>): Promise<PurchaseInvoice | null> {
+    const result = await db
+      .update(purchaseInvoices)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(purchaseInvoices.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deletePurchaseInvoice(id: string): Promise<boolean> {
+    const result = await db.delete(purchaseInvoices).where(eq(purchaseInvoices.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getPurchaseInvoiceItemsByInvoice(invoiceId: string): Promise<PurchaseInvoiceItem[]> {
+    return await db.select().from(purchaseInvoiceItems).where(eq(purchaseInvoiceItems.purchaseInvoiceId, invoiceId));
+  }
+
+  async createPurchaseInvoiceItem(item: InsertPurchaseInvoiceItem): Promise<PurchaseInvoiceItem> {
+    const result = await db.insert(purchaseInvoiceItems).values(item).returning();
+    return result[0];
+  }
+
+  async deletePurchaseInvoiceItemsByInvoice(invoiceId: string): Promise<void> {
+    await db.delete(purchaseInvoiceItems).where(eq(purchaseInvoiceItems.purchaseInvoiceId, invoiceId));
   }
 }
 
