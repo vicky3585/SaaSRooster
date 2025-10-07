@@ -2,103 +2,7 @@
 
 ## Overview
 
-Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal designed specifically for Indian businesses with GST compliance. The application provides comprehensive financial management capabilities including invoicing, customer management, expense tracking, inventory management, and GST-compliant reporting.
-
-**Copyright © 2025 Flying Venture System. All rights reserved.**
-
-**Key Features:**
-- Multi-tenant architecture with organization-based isolation
-- **CRM Module:** 
-  - Lead management with status tracking and conversion workflows
-  - Account and Contact management with hierarchical relationships
-  - Deal pipeline with Kanban board visualization and stage progression
-  - Activity timeline (calls, emails, meetings) and task management
-- **Support Module:**
-  - Ticket management with status tracking (open, pending, resolved, closed)
-  - Priority-based assignment (low, normal, high, urgent)
-  - Customer and contact linking for support requests
-- **Accounting Module:**
-  - Chart of Accounts with account hierarchy and type management (asset, liability, revenue, expense, equity)
-  - Journal entries and ledger management
-  - Trial balance and financial statements
-- **Billing & Invoicing:**
-  - GST-compliant invoicing and reporting (GSTR-1, GSTR-3B)
-  - Customer and vendor management with GSTIN validation
-  - Payment tracking and accounts receivable aging
-  - Credit/debit notes management
-- **Global Search:** Command palette (⌘K) for quick navigation across all entities
-- **Inventory Management:** Stock tracking with warehouse support
-- Role-based access control (Owner, Admin, Accountant, Viewer)
-
-## Recent Changes
-
-### Invoice Email Automation with AI (Latest - October 2025)
-- **AI-Powered Invoice Emails:** Send invoices directly to customers with single click
-  - OpenAI integration generates personalized, professional email content
-  - AI-generated subject lines and email body based on invoice details
-  - Automatic email delivery via Resend API
-  - Invoice status auto-updates to "sent" after successful email delivery
-- **Email Service Integration:**
-  - Resend for reliable transactional email delivery (configured via RESEND_API_KEY secret)
-  - Fallback templates if AI generation fails
-  - Error handling and user feedback via toast notifications
-
-**API Endpoints Added:**
-- `POST /api/invoices/:id/send` - Send invoice to customer via email with AI-generated content
-
-**Note:** Using manual Resend API key configuration (RESEND_API_KEY secret) instead of Replit connector integration per user preference.
-
-### Phase 1: Enhanced Master Data & Multi-GSTIN Support
-- **Multi-GSTIN Support:** Organizations can now manage multiple GSTINs with `org_gstins` table
-  - Each GSTIN has type (regular, composition, SEZ, export), state code, legal/trade name
-  - Set default GSTIN for invoicing per organization
-  - Complete address and validity period tracking
-- **Financial Years:** Full financial year management with period locking
-  - Track multiple FYs per organization (2024-25, 2025-26, etc.)
-  - Set current/active financial year with status (active, closed, locked)
-  - Date range validation with start/end dates
-- **Enhanced Items Master:**
-  - Barcode support for quick item lookup
-  - Batch and serial number tracking (manufacturing/expiry dates, warranty)
-  - GST cess support (percentage and fixed amount per unit)
-  - Multiple price lists with customer-specific pricing
-  - Opening stock and stock value tracking
-- **Units Master:** Standardized measurement units
-  - Pre-configured units (PCS, KG, L, M, SQM, etc.)
-  - UQC codes for e-invoicing compliance
-  - Seed endpoint for default units setup
-- **GST Rates Master:** Standard Indian GST rate slabs
-  - Rates: 0%, 0.25%, 3%, 5%, 12%, 18%, 28%
-  - Cess configuration (percentage + fixed amount)
-  - Seed endpoint for standard rate setup
-- **Vendors/Suppliers Module:**
-  - Separate vendor management with GSTIN, PAN tracking
-  - TDS section and rate configuration (194C, 194J, etc.)
-  - Place of supply for accurate GST calculations
-  - Opening balances and payment terms
-- **Price Lists:** Customer-specific pricing support
-  - Multiple price lists per organization (Retail, Wholesale, Distributor)
-  - Time-bound pricing (effective from/to dates)
-  - Item-specific price list entries
-
-**API Endpoints Added:**
-- `/api/units` - Units master CRUD + seed endpoint
-- `/api/gst-rates` - GST rates master CRUD + seed endpoint
-- `/api/org-gstins` - Multi-GSTIN management with set-default endpoint
-- `/api/financial-years` - Financial year management with set-current endpoint
-- `/api/vendors` - Vendor/supplier management
-- `/api/price-lists` - Price list management
-
-**Database Tables Added:**
-- `org_gstins` - Multiple GSTINs per organization
-- `financial_years` - Financial year periods with locking
-- `units` - Measurement units master
-- `gst_rates` - GST rate slabs with cess
-- `vendors` - Supplier/vendor master
-- `price_lists` - Customer pricing schemes
-- `item_prices` - Item-specific price list entries
-- `item_batches` - Batch tracking for items
-- `item_serials` - Serial number tracking
+Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal for Indian businesses, ensuring GST compliance. It offers comprehensive financial management including invoicing, customer/vendor management, expense tracking, inventory, and GST reporting (GSTR-1, GSTR-3B). The application includes CRM, Support, and Accounting modules, with features like multi-GSTIN support, financial year management, and AI-powered invoice email automation.
 
 ## User Preferences
 
@@ -108,164 +12,47 @@ Preferred communication style: Simple, everyday language.
 
 ### Frontend Architecture
 
-**Technology Stack:**
-- **Framework:** React with TypeScript, using Wouter for client-side routing
-- **Build Tool:** Vite with hot module replacement in development
-- **UI Library:** shadcn/ui components built on Radix UI primitives
-- **Styling:** Tailwind CSS with custom design system following Material Design principles
-- **State Management:** TanStack Query (React Query) for server state, React Context for authentication
-- **Charts:** Recharts for data visualization
-- **Forms:** React Hook Form with Zod validation
+**Technology Stack:** React with TypeScript, Vite, Wouter for routing, shadcn/ui (Radix UI) for components, Tailwind CSS for styling, TanStack Query for server state, React Context for authentication, Recharts for data visualization, and React Hook Form with Zod for forms.
 
-**Design System:**
-- Custom color palette with light/dark mode support
-- Inter font family for all UI text
-- Monospace fonts for financial codes and identifiers
-- Professional, data-focused aesthetic inspired by Stripe Dashboard
-- Consistent spacing and elevation patterns
+**Design System:** Custom color palette with light/dark mode, Inter font, monospace fonts for financial codes, professional data-focused aesthetic inspired by Stripe, consistent spacing and elevation.
 
-**Component Structure:**
-- Modular component architecture with reusable UI primitives
-- Separate components for KPI cards, charts, tables, and forms
-- Page-level components for main application views
-- Context providers for cross-cutting concerns (Auth, Theme)
-
-**Rationale:** React provides a mature ecosystem with excellent TypeScript support. Vite offers fast development builds and optimal production bundles. The combination of shadcn/ui and Radix UI provides accessible, customizable components while maintaining design consistency. TanStack Query simplifies server state management with built-in caching and synchronization.
+**Component Structure:** Modular, reusable UI primitives, page-level components, context providers for Auth and Theme.
 
 ### Backend Architecture
 
-**Technology Stack:**
-- **Runtime:** Node.js with Express.js HTTP server
-- **Language:** TypeScript with ES modules
-- **ORM:** Drizzle ORM for type-safe database queries
-- **Database:** PostgreSQL (Neon serverless driver)
-- **Authentication:** JWT-based with bcrypt password hashing
-- **Session Management:** HTTP-only cookies for refresh tokens
+**Technology Stack:** Node.js with Express.js, TypeScript, Drizzle ORM, PostgreSQL (Neon serverless driver), JWT-based authentication with bcrypt and HTTP-only cookies for refresh tokens.
 
-**API Design:**
-- RESTful API structure with resource-based endpoints
-- Middleware-based authentication and organization isolation
-- Centralized error handling
-- Request/response logging for API routes
+**API Design:** RESTful, resource-based endpoints with middleware for authentication and organization isolation, centralized error handling, request/response logging.
 
-**Multi-Tenancy Implementation:**
-- Organization-based data isolation with `orgId` on all tenant-scoped tables
-- Middleware enforcement of organization context on all protected routes
-- Membership-based role permissions (owner, admin, accountant, viewer)
-- User can belong to multiple organizations with organization switching capability
+**Multi-Tenancy:** Organization-based data isolation using `orgId` on all tenant-scoped tables, middleware enforcement, membership-based role permissions (owner, admin, accountant, viewer), and user organization switching.
 
-**Security Measures:**
-- JWT access tokens (15-minute expiry) and refresh tokens (7-day expiry)
-- Hashed refresh tokens stored in database
-- Password hashing with bcrypt
-- Organization-level data isolation enforced at middleware layer
-- Input validation using Zod schemas
-- Cookie-based authentication with httpOnly flag
-
-**Rationale:** Express provides a minimal, flexible foundation for building APIs. Drizzle ORM offers excellent TypeScript support with zero runtime overhead and direct SQL generation. The multi-tenant architecture ensures complete data isolation between organizations while allowing users to access multiple organizations. JWT-based authentication provides stateless authentication suitable for horizontal scaling.
+**Security:** JWT access (15-min) and refresh tokens (7-day), hashed passwords (bcrypt), organization-level data isolation, Zod input validation, httpOnly cookies.
 
 ### Database Architecture
 
-**Schema Design:**
+**Schema Design:** Core tables for users, organizations, memberships, and refresh tokens. Business domain tables for customers, leads, accounts, contacts, deals, activities, tasks, tickets, items, warehouses, invoices, payments, credit notes, expenses, stock transactions, chart of accounts, journals, and sequence counters.
 
-**Core Tables:**
-- `users` - User accounts with email/password authentication
-- `organizations` - Tenant organizations with company details and GST information
-- `memberships` - Junction table linking users to organizations with roles
-- `refresh_tokens` - Secure token storage for session management
-
-**Business Domain Tables:**
-- `customers` - Customer records with billing/shipping addresses and GST details
-- `leads` - CRM leads with status tracking, source attribution, and estimated value
-- `accounts` - CRM account/company records with industry and revenue tracking
-- `contacts` - Contact persons linked to accounts with roles and communication details
-- `deals` - Sales pipeline deals with stage progression and value tracking
-- `activities` - CRM activity timeline (calls, emails, meetings) linked to leads/deals
-- `tasks` - Task management with priorities, due dates, and completion tracking
-- `tickets` - Support ticket system with status, priority, and assignment tracking
-- `ticket_comments` - Comments and updates on support tickets
-- `items` - Products/services with pricing, HSN/SAC codes, and tax rates
-- `warehouses` - Inventory locations for multi-warehouse support
-- `invoices` - Invoice headers with customer, dates, and totals
-- `invoice_items` - Line items for invoices
-- `payments` - Payment records linked to invoices
-- `credit_notes` - Credit/debit notes for returns and adjustments
-- `expenses` - Expense tracking with categorization
-- `stock_transactions` - Inventory movement history (purchase, sale, adjustment, GRN)
-- `chart_of_accounts` - Accounting structure with account codes, types, and hierarchy
-- `journals` - Journal entry headers for double-entry bookkeeping
-- `journal_entries` - Journal entry line items (debits and credits)
-- `sequence_counters` - Auto-incrementing invoice/document numbers per organization
-
-**Key Design Decisions:**
-- Every tenant-scoped table includes `orgId` for data isolation
-- Soft deletes not implemented (hard deletes used for simplicity)
-- JSONB fields for flexible metadata storage (tax breakdowns, addresses)
-- Enum types for status fields to ensure data integrity
-- UUID primary keys for all tables
-- Timestamp fields (`createdAt`, `updatedAt`) for audit trails
-
-**Rationale:** The schema follows normalized database design principles while using PostgreSQL-specific features like enums and JSONB. The organization-scoped design ensures complete tenant isolation. Separate tables for invoices and invoice items follow standard accounting practices and allow for flexible line item management.
+**Key Design Decisions:** `orgId` for all tenant-scoped tables, UUID primary keys, `createdAt`/`updatedAt` for auditing, JSONB for flexible metadata, and enum types for data integrity.
 
 ## External Dependencies
 
 ### Third-Party Services
 
-**Database:**
-- **Neon PostgreSQL** - Serverless PostgreSQL database with websocket support
-- Connection managed through connection pooling
-- Environment variable: `DATABASE_URL`
-
-**Development Tools:**
-- **Replit Vite Plugins** - Development banner and cartographer for Replit environment
-- Runtime error overlay for enhanced debugging
+*   **Neon PostgreSQL:** Serverless PostgreSQL database (via `DATABASE_URL`).
+*   **Resend:** Transactional email delivery (via `RESEND_API_KEY`).
+*   **OpenAI:** AI services for email content generation (via `OPENAI_API_KEY`).
+*   **html-pdf-node:** HTML to PDF generation library.
 
 ### NPM Packages
 
-**Core Framework:**
-- `express` - HTTP server framework
-- `react`, `react-dom` - UI framework
-- `vite` - Build tool and development server
-- `typescript`, `tsx` - Type safety and execution
-
-**Database & ORM:**
-- `drizzle-orm` - Type-safe ORM
-- `drizzle-kit` - Schema migrations
-- `@neondatabase/serverless` - Neon database driver
-- `ws` - WebSocket client for Neon
-
-**Authentication & Security:**
-- `bcryptjs` - Password hashing
-- `jsonwebtoken` - JWT token generation/verification
-- `cookie-parser` - Cookie parsing middleware
-
-**UI Components:**
-- `@radix-ui/*` - Accessible UI primitives (20+ packages)
-- `tailwindcss` - Utility-first CSS framework
-- `recharts` - Charting library
-- `lucide-react` - Icon library
-
-**Forms & Validation:**
-- `react-hook-form` - Form state management
-- `@hookform/resolvers` - Form validation resolvers
-- `zod` - Schema validation
-- `drizzle-zod` - Drizzle-to-Zod schema generation
-
-**State Management:**
-- `@tanstack/react-query` - Server state management
-- `wouter` - Lightweight routing
-
-**Utilities:**
-- `class-variance-authority` - Component variant management
-- `clsx`, `tailwind-merge` - Class name utilities
-- `nanoid` - Unique ID generation
+*   **Core Framework:** `express`, `react`, `react-dom`, `vite`, `typescript`, `tsx`.
+*   **Database & ORM:** `drizzle-orm`, `drizzle-kit`, `@neondatabase/serverless`, `ws`.
+*   **Authentication & Security:** `bcryptjs`, `jsonwebtoken`, `cookie-parser`.
+*   **UI Components:** `@radix-ui/*`, `tailwindcss`, `recharts`, `lucide-react`.
+*   **Forms & Validation:** `react-hook-form`, `@hookform/resolvers`, `zod`, `drizzle-zod`.
+*   **State Management & Routing:** `@tanstack/react-query`, `wouter`.
+*   **Utilities:** `class-variance-authority`, `clsx`, `tailwind-merge`, `nanoid`.
 
 ### Environment Configuration
 
-**Required Environment Variables:**
-- `DATABASE_URL` - PostgreSQL connection string
-- `JWT_SECRET` - Secret for access token signing
-- `REFRESH_SECRET` - Secret for refresh token signing
-- `NODE_ENV` - Environment mode (development/production)
-
-**Rationale:** The dependency choices prioritize type safety, developer experience, and production readiness. Neon provides serverless PostgreSQL that scales automatically. The authentication approach uses industry-standard JWT patterns. The UI component library provides accessibility out of the box while remaining customizable. All major dependencies are actively maintained with strong TypeScript support.
+Required: `DATABASE_URL`, `JWT_SECRET`, `REFRESH_SECRET`, `NODE_ENV`, `RESEND_API_KEY`, `OPENAI_API_KEY`.
