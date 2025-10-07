@@ -256,6 +256,7 @@ router.post("/:id/send", async (req: AuthRequest, res) => {
     );
     
     if (!result.success) {
+      console.error("Email send failed:", result.error);
       return res.status(500).json({ message: result.error || "Failed to send email" });
     }
 

@@ -100,6 +100,7 @@ export async function sendInvoiceEmail(
     });
 
     if (result.error) {
+      console.error("Resend API error:", JSON.stringify(result.error, null, 2));
       return { success: false, error: result.error.message };
     }
 
