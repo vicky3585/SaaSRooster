@@ -127,6 +127,19 @@ export const recurrenceFrequencyEnum = pgEnum("recurrence_frequency", [
   "yearly",
 ]);
 
+export const gstinTypeEnum = pgEnum("gstin_type", [
+  "regular",
+  "composition",
+  "sez",
+  "export",
+]);
+
+export const financialYearStatusEnum = pgEnum("financial_year_status", [
+  "active",
+  "closed",
+  "locked",
+]);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -154,6 +167,119 @@ export const organizations = pgTable("organizations", {
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Organization GSTINs (Multi-GSTIN support)
+export const orgGstins = pgTable(
+  "org_gstins",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    gstin: varchar("gstin", { length: 15 }).notNull(),
+    type: gstinTypeEnum("type").notNull().default("regular"),
+    legalName: text("legal_name").notNull(),
+    tradeName: text("trade_name"),
+    stateCode: varchar("state_code", { length: 2 }).notNull(), // "27" for Maharashtra
+    stateName: text("state_name").notNull(),
+    address: text("address").notNull(),
+    pincode: varchar("pincode", { length: 6 }).notNull(),
+    panNumber: varchar("pan_number", { length: 10 }),
+    isActive: boolean("is_active").default(true),
+    isDefault: boolean("is_default").default(false), // Default GSTIN for invoicing
+    registrationDate: timestamp("registration_date"),
+    validFrom: timestamp("valid_from"),
+    validTo: timestamp("valid_to"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("org_gstins_org_id_idx").on(table.orgId),
+    gstinUnique: unique("org_gstins_gstin_unique").on(table.gstin),
+  })
+);
+
+// Financial Years
+export const financialYears = pgTable(
+  "financial_years",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "2024-25"
+    startDate: timestamp("start_date").notNull(),
+    endDate: timestamp("end_date").notNull(),
+    status: financialYearStatusEnum("status").notNull().default("active"),
+    isCurrent: boolean("is_current").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("financial_years_org_id_idx").on(table.orgId),
+    orgNameUnique: unique("financial_years_org_name_unique").on(table.orgId, table.name),
+  })
+);
+
+// Units Master
+export const units = pgTable(
+  "units",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "Pieces", "Kilograms", "Meters"
+    symbol: varchar("symbol", { length: 10 }).notNull(), // "PCS", "KG", "M"
+    uqc: varchar("uqc", { length: 3 }), // Unit Quantity Code for e-invoicing
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("units_org_id_idx").on(table.orgId),
+    orgSymbolUnique: unique("units_org_symbol_unique").on(table.orgId, table.symbol),
+  })
+);
+
+// GST Rates Master
+export const gstRates = pgTable(
+  "gst_rates",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "GST 18%", "GST 5% + Cess 1%"
+    rate: decimal("rate", { precision: 5, scale: 2 }).notNull(), // 18.00, 5.00, 28.00
+    cess: decimal("cess", { precision: 5, scale: 2 }).default("0"), // Additional cess percentage
+    cessAmount: decimal("cess_amount", { precision: 10, scale: 2 }).default("0"), // Fixed cess amount per unit
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("gst_rates_org_id_idx").on(table.orgId),
+  })
+);
+
+// Price Lists
+export const priceLists = pgTable(
+  "price_lists",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(), // "Retail", "Wholesale", "Distributor"
+    description: text("description"),
+    isDefault: boolean("is_default").default(false),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("price_lists_org_id_idx").on(table.orgId),
+  })
+);
 
 // Users
 export const users = pgTable("users", {
@@ -200,23 +326,69 @@ export const customers = pgTable(
     pan: varchar("pan", { length: 10 }),
     email: text("email"),
     phone: text("phone"),
+    placeOfSupply: varchar("place_of_supply", { length: 2 }), // State code for GST
     billingAddress: text("billing_address"),
     billingCity: text("billing_city"),
     billingState: text("billing_state"),
     billingPincode: varchar("billing_pincode", { length: 6 }),
+    billingCountry: text("billing_country").default("India"),
     shippingAddress: text("shipping_address"),
     shippingCity: text("shipping_city"),
     shippingState: text("shipping_state"),
     shippingPincode: varchar("shipping_pincode", { length: 6 }),
+    shippingCountry: text("shipping_country").default("India"),
     contactPerson: text("contact_person"),
     contactPhone: text("contact_phone"),
     contactEmail: text("contact_email"),
+    priceListId: varchar("price_list_id").references(() => priceLists.id),
+    creditLimit: decimal("credit_limit", { precision: 12, scale: 2 }),
+    creditDays: integer("credit_days").default(30),
+    openingBalance: decimal("opening_balance", { precision: 12, scale: 2 }).default("0"),
     notes: text("notes"),
+    isActive: boolean("is_active").default(true),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     orgIdIdx: index("customers_org_id_idx").on(table.orgId),
+    gstinIdx: index("customers_gstin_idx").on(table.gstin),
+  })
+);
+
+// Vendors/Suppliers
+export const vendors = pgTable(
+  "vendors",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    gstin: varchar("gstin", { length: 15 }),
+    pan: varchar("pan", { length: 10 }),
+    email: text("email"),
+    phone: text("phone"),
+    placeOfSupply: varchar("place_of_supply", { length: 2 }), // State code for GST
+    billingAddress: text("billing_address"),
+    billingCity: text("billing_city"),
+    billingState: text("billing_state"),
+    billingPincode: varchar("billing_pincode", { length: 6 }),
+    billingCountry: text("billing_country").default("India"),
+    contactPerson: text("contact_person"),
+    contactPhone: text("contact_phone"),
+    contactEmail: text("contact_email"),
+    tdsSection: varchar("tds_section", { length: 10 }), // "194C", "194J", etc.
+    tdsRate: decimal("tds_rate", { precision: 5, scale: 2 }),
+    paymentTerms: text("payment_terms"),
+    openingBalance: decimal("opening_balance", { precision: 12, scale: 2 }).default("0"),
+    notes: text("notes"),
+    isActive: boolean("is_active").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("vendors_org_id_idx").on(table.orgId),
+    gstinIdx: index("vendors_gstin_idx").on(table.gstin),
   })
 );
 
@@ -254,21 +426,110 @@ export const items = pgTable(
     name: text("name").notNull(),
     description: text("description"),
     sku: text("sku"),
+    barcode: varchar("barcode", { length: 50 }),
     hsnCode: varchar("hsn_code", { length: 8 }),
     sacCode: varchar("sac_code", { length: 6 }),
-    unit: text("unit").default("PCS"),
+    unitId: varchar("unit_id").references(() => units.id),
+    unit: text("unit").default("PCS"), // Legacy field, use unitId
+    gstRateId: varchar("gst_rate_id").references(() => gstRates.id),
+    taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("18.00"), // Legacy, use gstRateId
+    cess: decimal("cess", { precision: 5, scale: 2 }).default("0"), // Cess percentage
+    cessAmount: decimal("cess_amount", { precision: 10, scale: 2 }).default("0"), // Fixed cess per unit
     price: decimal("price", { precision: 12, scale: 2 }).notNull(),
-    taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).default("18.00"), // GST rate
+    priceListId: varchar("price_list_id").references(() => priceLists.id),
+    purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }),
     stockQuantity: integer("stock_quantity").default(0),
     lowStockThreshold: integer("low_stock_threshold").default(10),
     defaultWarehouseId: varchar("default_warehouse_id").references(() => warehouses.id),
     isService: boolean("is_service").default(false),
+    isBatchTracked: boolean("is_batch_tracked").default(false),
+    isSerialTracked: boolean("is_serial_tracked").default(false),
+    openingStock: integer("opening_stock").default(0),
+    openingStockValue: decimal("opening_stock_value", { precision: 12, scale: 2 }).default("0"),
     createdAt: timestamp("created_at").defaultNow().notNull(),
     updatedAt: timestamp("updated_at").defaultNow().notNull(),
   },
   (table) => ({
     orgIdIdx: index("items_org_id_idx").on(table.orgId),
     skuIdx: index("items_sku_idx").on(table.sku),
+    barcodeIdx: index("items_barcode_idx").on(table.barcode),
+  })
+);
+
+// Item Price List entries (for customer-specific pricing)
+export const itemPrices = pgTable(
+  "item_prices",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    priceListId: varchar("price_list_id")
+      .notNull()
+      .references(() => priceLists.id, { onDelete: "cascade" }),
+    price: decimal("price", { precision: 12, scale: 2 }).notNull(),
+    effectiveFrom: timestamp("effective_from"),
+    effectiveTo: timestamp("effective_to"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("item_prices_org_id_idx").on(table.orgId),
+    itemIdIdx: index("item_prices_item_id_idx").on(table.itemId),
+    priceListIdIdx: index("item_prices_price_list_id_idx").on(table.priceListId),
+    uniquePriceEntry: unique("item_prices_unique").on(table.itemId, table.priceListId),
+  })
+);
+
+// Item Batches (for batch-tracked items)
+export const itemBatches = pgTable(
+  "item_batches",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    batchNumber: text("batch_number").notNull(),
+    quantity: integer("quantity").notNull(),
+    manufacturingDate: timestamp("manufacturing_date"),
+    expiryDate: timestamp("expiryDate"),
+    purchasePrice: decimal("purchase_price", { precision: 12, scale: 2 }),
+    sellingPrice: decimal("selling_price", { precision: 12, scale: 2 }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("item_batches_org_id_idx").on(table.orgId),
+    itemIdIdx: index("item_batches_item_id_idx").on(table.itemId),
+    batchNumberIdx: index("item_batches_batch_number_idx").on(table.batchNumber),
+  })
+);
+
+// Item Serials (for serial-tracked items)
+export const itemSerials = pgTable(
+  "item_serials",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id")
+      .notNull()
+      .references(() => items.id, { onDelete: "cascade" }),
+    serialNumber: text("serial_number").notNull(),
+    batchId: varchar("batch_id").references(() => itemBatches.id),
+    status: text("status").default("available"), // available, sold, damaged
+    warrantyExpiryDate: timestamp("warranty_expiry_date"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("item_serials_org_id_idx").on(table.orgId),
+    itemIdIdx: index("item_serials_item_id_idx").on(table.itemId),
+    serialNumberUnique: unique("item_serials_serial_unique").on(table.orgId, table.serialNumber),
   })
 );
 
@@ -1161,6 +1422,58 @@ export const insertCustomerSchema = createInsertSchema(customers).omit({
   updatedAt: true,
 });
 
+export const insertVendorSchema = createInsertSchema(vendors).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertOrgGstinSchema = createInsertSchema(orgGstins).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFinancialYearSchema = createInsertSchema(financialYears).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  startDate: z.string().transform(val => new Date(val)),
+  endDate: z.string().transform(val => new Date(val)),
+});
+
+export const insertUnitSchema = createInsertSchema(units).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertGstRateSchema = createInsertSchema(gstRates).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertPriceListSchema = createInsertSchema(priceLists).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertItemPriceSchema = createInsertSchema(itemPrices).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertItemBatchSchema = createInsertSchema(itemBatches).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertItemSerialSchema = createInsertSchema(itemSerials).omit({
+  id: true,
+  createdAt: true,
+});
+
 export const insertWarehouseSchema = createInsertSchema(warehouses).omit({
   id: true,
   createdAt: true,
@@ -1428,3 +1741,30 @@ export type InsertRecurringInvoice = z.infer<typeof insertRecurringInvoiceSchema
 
 export type RecurringInvoiceItem = typeof recurringInvoiceItems.$inferSelect;
 export type InsertRecurringInvoiceItem = z.infer<typeof insertRecurringInvoiceItemSchema>;
+
+export type Vendor = typeof vendors.$inferSelect;
+export type InsertVendor = z.infer<typeof insertVendorSchema>;
+
+export type OrgGstin = typeof orgGstins.$inferSelect;
+export type InsertOrgGstin = z.infer<typeof insertOrgGstinSchema>;
+
+export type FinancialYear = typeof financialYears.$inferSelect;
+export type InsertFinancialYear = z.infer<typeof insertFinancialYearSchema>;
+
+export type Unit = typeof units.$inferSelect;
+export type InsertUnit = z.infer<typeof insertUnitSchema>;
+
+export type GstRate = typeof gstRates.$inferSelect;
+export type InsertGstRate = z.infer<typeof insertGstRateSchema>;
+
+export type PriceList = typeof priceLists.$inferSelect;
+export type InsertPriceList = z.infer<typeof insertPriceListSchema>;
+
+export type ItemPrice = typeof itemPrices.$inferSelect;
+export type InsertItemPrice = z.infer<typeof insertItemPriceSchema>;
+
+export type ItemBatch = typeof itemBatches.$inferSelect;
+export type InsertItemBatch = z.infer<typeof insertItemBatchSchema>;
+
+export type ItemSerial = typeof itemSerials.$inferSelect;
+export type InsertItemSerial = z.infer<typeof insertItemSerialSchema>;
