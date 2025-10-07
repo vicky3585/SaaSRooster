@@ -1,0 +1,109 @@
+You are a Senior Full-Stack SaaS Architect. Take end-to-end ownership to turn my existing app “Ledgix – Billing & Accounting Portal” into a production-grade, multi-tenant accounting + billing SaaS for India with AI assist. Deliver working code, migrations, tests, seed data, and deployment artifacts. Keep costs low and avoid unnecessary credits.
+
+CONTEXT & GOALS
+- Stack: Use my current repo as baseline. Detect framework(s) and keep what works; refactor only where needed for stability, security, and maintainability.
+- Tenancy: True multi-tenant (organizations), each org can have multiple GSTINs and financial years.
+- Performance & UX: Clean, professional UI with responsive layout, dark mode, keyboard shortcuts, and accessible forms. Keep dashboard snappy.
+
+TOP FEATURES (INDIA TAXATION)
+1) Master Data
+   - Items with HSN/SAC, GST rate slabs (0, 5, 12, 18, 28), cess; units, price lists, barcodes.
+   - Customers/Suppliers with GSTIN validation, PAN, place of supply, billing/shipping addresses.
+   - Ledgers/Chart of Accounts (Indian GAAP style), cost centers, projects, branches.
+
+2) Sales & Purchases
+   - Quotations → Invoices → Credit/Debit Notes; Delivery Challans; Recurring invoices.
+   - e-Invoicing (IRN/QR) ready: abstraction layer with adapter to NIC sandbox; allow manual IRN upload too.
+   - E-Way Bill generation stub (clean interface, wire later).
+   - Purchase bills, expenses, vendor credits.
+   - TDS/TCS handling with ledgers and certificate tracking.
+
+3) GST Compliance
+   - GSTR-1 (B2B, B2C, CDNR/CDNUR), GSTR-3B summaries; JSON/Excel exports exactly matching portal formats.
+   - 2B reconciliation (import JSON/CSV from GST portal), mismatches + suggested fixes.
+   - Reverse charge, composition scheme, place-of-supply logic (IGST vs CGST/SGST).
+   - HSN summary, e-invoice registers, audit trails for all tax fields.
+
+4) Accounting
+   - Double-entry ledger with journal vouchers, payments, receipts, contra.
+   - Bank accounts, UPI/cheque/UTR tracking, bank statement import (.csv) with rules-based auto-match.
+   - Trial Balance, Ledger, Daybook, Cash/Bank Book, P&L, Balance Sheet, GSTR-3B mapped summaries.
+
+5) Inventory (optional toggle)
+   - Stock in/out, GRN, FIFO costing, item batches/serials.
+
+6) Subscriptions & Payments
+   - Plans (Free/Starter/Pro), usage limits, metering.
+   - Razorpay + UPI integration; webhooks; invoices/receipts for my SaaS billing.
+
+7) Admin & Security
+   - RBAC roles: Owner, Admin, Accountant, Sales, Viewer (fine-grained permissions).
+   - Audit log (who/when/what) for every create/update/delete and tax-sensitive field.
+   - Org-scoped API keys, IP allowlist (optional), 2FA, passwordless magic links.
+   - Rate limiting, input validation, server-side schema (Zod/Yup), OWASP headers.
+
+AI FEATURES (use OPENAI API efficiently; ENV var OPENAI_API_KEY)
+- Document AI:
+  * Parse vendor invoices & bank statements (PDF/IMG → OCR), then call GPT for field mapping: vendor, GSTIN, invoice no/date, HSN/SAC lines, taxes, totals.
+  * Confidence scores + human-in-the-loop review queue.
+- Smart Categorization:
+  * Auto-suggest expense accounts, HSN/SAC, GST applicability, and TDS sections; learn from user corrections.
+- Compliance Copilot:
+  * Explain GSTR-3B variances; flag risky entries (wrong GSTIN, place-of-supply mismatch, rounding anomalies).
+  * Draft reconciliation notes and vendor follow-up emails for mismatches.
+- Forecasts:
+  * Cash-flow projection using historical receipts/payments; upcoming liabilities (TDS/TCS/GST due dates).
+
+=== NEW: INSIGHTS & NOTIFICATIONS (AI-POWERED) ===
+- Monthly Sales & Purchase Digest:
+  * Nightly job aggregates month-to-date and last-month totals for Sales, Purchases, Collections, Payables.
+  * AI summary (bullet points) with trends, top customers/items, anomalies (outlier invoices, negative margins).
+  * Delivered as in-app notifications + email (SMTP), with opt-in webhook for Telegram/WhatsApp via user-provided bot/webhook.
+- Quarterly GST Planner (What-If & Nudges):
+  * Compute projected quarterly GST liability/refund per GSTIN: Output tax (IGST/CGST/SGST), eligible ITC and net payable/refund.
+  * “What-if” sandbox: If the user wants to reduce net payable by ₹X, suggest estimated additional **eligible purchases** Y (with assumed GST rate Z%) that would increase ITC accordingly (clearly labeled as an estimate).
+  * If there is unutilized ITC likely to carry forward, suggest estimated **additional sales** needed to utilize ITC before quarter end (again, as estimates), including caveats.
+  * All suggestions must be clearly marked as **planning aids** (not tax advice) and show transparent calculations, assumptions, and GST sections used.
+- Alerts & Reminders:
+  * Pre-due reminders for GSTR-1/3B, TDS/TCS; “low ITC utilization” or “high variance vs 2B” alerts.
+  * Missed invoice fields (e.g., HSN missing on >₹X line value) and place-of-supply inconsistencies.
+- Implementation:
+  * Background jobs with BullMQ/cron, snapshot tables for insights, per-org preferences for cadence/channels.
+  * Minimal token usage via prompt templates, caching intermediate aggregates, and truncating context.
+
+NON-FUNCTIONALS
+- Postgres + Prisma/TypeORM with strict FKs, unique indexes, soft delete where appropriate.
+- Migrations + seeders (demo org, GST masters, HSN list, sample data).
+- Caching (Redis) for masters/reports; background jobs for heavy tasks (exports, OCR, e-invoice).
+- Config via env: DATABASE_URL, REDIS_URL, OPENAI_API_KEY, RAZORPAY_KEY_ID/SECRET, APP_URL, JWT_SECRET, EMAIL_*, NOTIFY_WEBHOOK_URL (optional).
+- Observability: health endpoint, structured logs, request IDs, error tracking (Sentry hooks), metrics endpoint.
+
+UI/UX DELIVERABLES
+- Dashboard: receivables aging, payables, cash balance, top customers/items, monthly GST liability, compliance status (GSTR-1/3B), quick actions.
+- Data-entry forms with GST helpers: correct IGST/CGST/SGST split; keyboard shortcuts.
+- Importers: customers, vendors, items, opening balances; sample CSV templates.
+- Exports: Excel/PDF for registers and GST returns; branded invoice PDF with my logo.
+- NEW Pages:
+  * “Monthly Digest” page with charts and AI summary, plus email preview/send-now.
+  * “Quarterly Tax Planner” page: projected liability/ITC, sliders for what-if assumptions (GST rates, margins), and downloadable planner report.
+
+API & INTEGRATION
+- REST (minimal webhooks). Versioned /api/v1 with JWT.
+- Endpoints: insights/monthly, insights/quarterly-tax-plan, notifications/preferences, webhooks/test.
+- Webhooks for invoice paid, e-invoice generated, reconciliation completed, monthly digest ready.
+
+TESTS & QUALITY
+- Unit/integration tests for GST math (rounding, IGST/CGST/SGST allocation).
+- Golden-file tests for GSTR-1/3B exports and the quarterly planner’s sample scenarios.
+- E2E: create org → add GSTIN → issue invoices/purchases → monthly digest generated → quarterly planner shows projections and what-if outputs.
+
+DEPLOYMENT
+- Dockerfile(s) + docker-compose; prod images.
+- One-click bootstrap: create DB, run migrations, seed, create admin user.
+- CI/CD (Replit Nix + GitHub Actions): lint, test, build, image, deploy.
+
+ACCEPTANCE
+- Fresh clone + `docker compose up` yields a working SaaS with seeded demo org and insights enabled.
+- I can receive a monthly sales/purchase digest and view a quarterly GST plan with what-if calculators.
+- I can create invoices with correct GST splits, export GSTR-1/3B, run AI document import, and reconcile 2B samples.
+- CI green; no secrets in repo; README documents setup, env, workflows, and planner math caveats (not tax advice).
