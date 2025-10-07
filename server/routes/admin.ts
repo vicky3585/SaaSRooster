@@ -1,4 +1,6 @@
 import { Router } from "express";
+import { z } from "zod";
+import bcrypt from "bcryptjs";
 import { storage } from "../storage";
 import { requirePlatformAdmin } from "../middleware/platformAdmin";
 import { db } from "../db";
@@ -181,6 +183,87 @@ router.post("/organizations/:id/enable", async (req: any, res) => {
     res.json({ message: "Organization enabled successfully" });
   } catch (error) {
     console.error("Enable organization error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Get organization users
+router.get("/organizations/:id/users", async (req: any, res) => {
+  try {
+    const orgId = req.params.id;
+    
+    const orgMemberships = await db
+      .select({
+        id: memberships.id,
+        userId: memberships.userId,
+        role: memberships.role,
+        createdAt: memberships.createdAt,
+        userName: users.name,
+        userEmail: users.email,
+        userAvatarUrl: users.avatarUrl,
+      })
+      .from(memberships)
+      .innerJoin(users, eq(users.id, memberships.userId))
+      .where(eq(memberships.orgId, orgId));
+    
+    res.json(orgMemberships);
+  } catch (error) {
+    console.error("Get organization users error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Reset user password (admin)
+router.post("/users/:userId/reset-password", async (req: any, res) => {
+  try {
+    const userId = req.params.userId;
+    const adminId = req.admin.userId;
+    
+    const { newPassword } = z.object({
+      newPassword: z.string().min(6, "Password must be at least 6 characters"),
+    }).parse(req.body);
+    
+    const [targetUser] = await db.select().from(users).where(eq(users.id, userId));
+    
+    if (!targetUser) {
+      return res.status(404).json({ message: "User not found" });
+    }
+    
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    
+    await db
+      .update(users)
+      .set({
+        password: hashedPassword,
+        updatedAt: new Date(),
+      })
+      .where(eq(users.id, userId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null,
+      action: "admin_reset_user_password",
+      entityType: "user",
+      entityId: userId,
+      changes: {
+        targetUserEmail: targetUser.email,
+        targetUserName: targetUser.name,
+        resetBy: "platform_admin",
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ message: "Password reset successfully" });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: error.errors,
+      });
+    }
+    console.error("Admin reset password error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

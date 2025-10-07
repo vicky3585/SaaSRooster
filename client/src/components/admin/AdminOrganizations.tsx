@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import {
   Table,
   TableBody,
@@ -22,17 +24,45 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Trash2, Ban, CheckCircle } from "lucide-react";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { z } from "zod";
+import { Search, Trash2, Ban, CheckCircle, Users2, KeyRound } from "lucide-react";
+
+const resetPasswordSchema = z.object({
+  newPassword: z.string().min(6, "Password must be at least 6 characters"),
+  confirmPassword: z.string().min(6, "Password must be at least 6 characters"),
+}).refine((data) => data.newPassword === data.confirmPassword, {
+  message: "Passwords don't match",
+  path: ["confirmPassword"],
+});
 
 export default function AdminOrganizations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [usersDialogOpen, setUsersDialogOpen] = useState(false);
+  const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
+  const [selectedUser, setSelectedUser] = useState<any>(null);
   const { toast } = useToast();
 
   const { data: organizations = [], isLoading } = useQuery({
     queryKey: ["/api/admin/organizations"],
     queryFn: () => adminApiRequest("GET", "/api/admin/organizations"),
+  });
+
+  const { data: orgUsers = [], isLoading: usersLoading } = useQuery({
+    queryKey: ["/api/admin/organizations", selectedOrg?.id, "users"],
+    queryFn: () => adminApiRequest("GET", `/api/admin/organizations/${selectedOrg?.id}/users`),
+    enabled: !!selectedOrg?.id,
+  });
+
+  const resetPasswordForm = useForm({
+    resolver: zodResolver(resetPasswordSchema),
+    defaultValues: {
+      newPassword: "",
+      confirmPassword: "",
+    },
   });
 
   const deleteOrgMutation = useMutation({
@@ -96,6 +126,46 @@ export default function AdminOrganizations() {
       });
     },
   });
+
+  const resetPasswordMutation = useMutation({
+    mutationFn: async ({ userId, newPassword }: { userId: string; newPassword: string }) => {
+      await adminApiRequest("POST", `/api/admin/users/${userId}/reset-password`, { newPassword });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations", selectedOrg?.id, "users"] });
+      setResetPasswordDialogOpen(false);
+      setSelectedUser(null);
+      resetPasswordForm.reset();
+      toast({
+        title: "Password reset",
+        description: "User password has been reset successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to reset password",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleViewUsers = (org: any) => {
+    setSelectedOrg(org);
+    setUsersDialogOpen(true);
+  };
+
+  const handleResetPassword = (user: any) => {
+    setSelectedUser(user);
+    resetPasswordForm.reset();
+    setResetPasswordDialogOpen(true);
+  };
+
+  const onResetPasswordSubmit = (data: any) => {
+    if (selectedUser) {
+      resetPasswordMutation.mutate({ userId: selectedUser.userId, newPassword: data.newPassword });
+    }
+  };
 
   const filteredOrgs = organizations.filter(
     (org: any) =>
@@ -180,6 +250,15 @@ export default function AdminOrganizations() {
                   <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button 
+                        variant="ghost" 
+                        size="sm" 
+                        onClick={() => handleViewUsers(org)}
+                        data-testid={`button-view-users-${org.id}`}
+                      >
+                        <Users2 className="w-4 h-4 mr-1" />
+                        Users
+                      </Button>
                       {org.status === "active" && (
                         <>
                           <Button 
@@ -266,6 +345,158 @@ export default function AdminOrganizations() {
               {deleteOrgMutation.isPending ? "Deleting..." : "Delete Organization"}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={usersDialogOpen} onOpenChange={(open) => {
+        setUsersDialogOpen(open);
+        if (!open) {
+          setSelectedOrg(null);
+        }
+      }}>
+        <DialogContent className="max-w-4xl">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedOrg?.name} - Users
+            </DialogTitle>
+          </DialogHeader>
+          {usersLoading ? (
+            <div className="py-8 text-center text-muted-foreground">Loading users...</div>
+          ) : orgUsers.length === 0 ? (
+            <div className="py-12 text-center text-muted-foreground">No users found</div>
+          ) : (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>User</TableHead>
+                  <TableHead>Email</TableHead>
+                  <TableHead>Role</TableHead>
+                  <TableHead>Joined</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {orgUsers.map((user: any) => (
+                  <TableRow key={user.id}>
+                    <TableCell>
+                      <div className="flex items-center gap-3">
+                        <Avatar className="h-8 w-8">
+                          <AvatarImage src={user.userAvatarUrl || undefined} />
+                          <AvatarFallback>
+                            {user.userName?.substring(0, 2).toUpperCase() || "??"}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="font-medium">{user.userName}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>{user.userEmail}</TableCell>
+                    <TableCell>
+                      <Badge variant="outline">
+                        {user.role.charAt(0).toUpperCase() + user.role.slice(1)}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>{new Date(user.createdAt).toLocaleDateString()}</TableCell>
+                    <TableCell className="text-right">
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => handleResetPassword(user)}
+                        data-testid={`button-reset-password-${user.userId}`}
+                      >
+                        <KeyRound className="w-4 h-4 mr-1" />
+                        Reset Password
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setUsersDialogOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={resetPasswordDialogOpen} onOpenChange={(open) => {
+        setResetPasswordDialogOpen(open);
+        if (!open) {
+          setSelectedUser(null);
+          resetPasswordForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Reset User Password</DialogTitle>
+          </DialogHeader>
+          {selectedUser && (
+            <Form {...resetPasswordForm}>
+              <form onSubmit={resetPasswordForm.handleSubmit(onResetPasswordSubmit)} className="space-y-4">
+                <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
+                  <Avatar className="h-10 w-10">
+                    <AvatarImage src={selectedUser.userAvatarUrl || undefined} />
+                    <AvatarFallback>
+                      {selectedUser.userName?.substring(0, 2).toUpperCase() || "??"}
+                    </AvatarFallback>
+                  </Avatar>
+                  <div>
+                    <p className="font-medium">{selectedUser.userName}</p>
+                    <p className="text-sm text-muted-foreground">{selectedUser.userEmail}</p>
+                  </div>
+                </div>
+
+                <FormField
+                  control={resetPasswordForm.control}
+                  name="newPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" placeholder="Enter new password" data-testid="input-admin-new-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={resetPasswordForm.control}
+                  name="confirmPassword"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Confirm Password</FormLabel>
+                      <FormControl>
+                        <Input {...field} type="password" placeholder="Confirm new password" data-testid="input-admin-confirm-password" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setResetPasswordDialogOpen(false);
+                      setSelectedUser(null);
+                      resetPasswordForm.reset();
+                    }}
+                    data-testid="button-cancel-admin-password-reset"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={resetPasswordMutation.isPending}
+                    data-testid="button-confirm-admin-password-reset"
+                  >
+                    {resetPasswordMutation.isPending ? "Resetting..." : "Reset Password"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
