@@ -61,6 +61,7 @@ const lineItemSchema = z.object({
 });
 
 const invoiceFormSchema = z.object({
+  invoiceNumber: z.string().min(1, "Invoice number is required"),
   customerId: z.string().min(1, "Customer is required"),
   invoiceDate: z.string().min(1, "Invoice date is required"),
   dueDate: z.string().min(1, "Due date is required"),
@@ -100,6 +101,7 @@ export default function Invoices() {
   const form = useForm<InvoiceFormValues>({
     resolver: zodResolver(invoiceFormSchema),
     defaultValues: {
+      invoiceNumber: "",
       customerId: "",
       invoiceDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
@@ -117,10 +119,10 @@ export default function Invoices() {
 
   // Fetch next invoice number when dialog opens
   useEffect(() => {
-    if (isDialogOpen) {
+    if (isDialogOpen && dialogMode === "create") {
       fetchNextInvoiceNumber();
     }
-  }, [isDialogOpen]);
+  }, [isDialogOpen, dialogMode]);
 
   // Auto-populate Place of Supply when customer is selected
   useEffect(() => {
@@ -151,6 +153,7 @@ export default function Invoices() {
       const response = await apiRequest("GET", "/api/invoices/next-number");
       const data = await response.json();
       setNextInvoiceNumber(data.invoiceNumber);
+      form.setValue("invoiceNumber", data.invoiceNumber);
     } catch (error) {
       console.error("Failed to fetch next invoice number:", error);
     }
@@ -201,6 +204,7 @@ export default function Invoices() {
       const total = subtotal + cgst + sgst + igst;
       
       const payload = {
+        invoiceNumber: data.invoiceNumber,
         customerId: data.customerId,
         invoiceDate: new Date(data.invoiceDate).toISOString(),
         dueDate: new Date(data.dueDate).toISOString(),
@@ -272,6 +276,7 @@ export default function Invoices() {
       const total = subtotal + cgst + sgst + igst;
       
       const payload = {
+        invoiceNumber: data.invoiceNumber,
         customerId: data.customerId,
         invoiceDate: new Date(data.invoiceDate).toISOString(),
         dueDate: new Date(data.dueDate).toISOString(),
@@ -358,6 +363,7 @@ export default function Invoices() {
     setDialogMode("create");
     setSelectedInvoice(null);
     form.reset({
+      invoiceNumber: "",
       customerId: "",
       invoiceDate: format(new Date(), "yyyy-MM-dd"),
       dueDate: format(new Date(Date.now() + 15 * 24 * 60 * 60 * 1000), "yyyy-MM-dd"),
@@ -402,6 +408,7 @@ export default function Invoices() {
       })) || [];
 
       form.reset({
+        invoiceNumber: data.invoiceNumber,
         customerId: data.customerId,
         invoiceDate: format(new Date(data.invoiceDate), "yyyy-MM-dd"),
         dueDate: format(new Date(data.dueDate), "yyyy-MM-dd"),
@@ -709,17 +716,48 @@ export default function Invoices() {
 
           <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-              {/* Invoice Number Display */}
+              {/* Invoice Number and Status */}
               <div className="bg-muted p-4 rounded-lg">
-                <div className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm text-muted-foreground">Invoice Number</p>
-                    <p className="text-lg font-mono font-semibold">{nextInvoiceNumber || "Loading..."}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-sm text-muted-foreground">Status</p>
-                    <StatusBadge status={form.watch("status")} />
-                  </div>
+                <div className="flex items-center justify-between gap-4">
+                  <FormField
+                    control={form.control}
+                    name="invoiceNumber"
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel>Invoice Number *</FormLabel>
+                        <FormControl>
+                          <Input {...field} className="font-mono" placeholder="INV-2024-001" data-testid="input-invoice-number" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="status"
+                    render={({ field }) => (
+                      <FormItem className="w-[200px]">
+                        <FormLabel>Status</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                            <SelectTrigger data-testid="select-status">
+                              <SelectValue />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            <SelectItem value="draft">Draft</SelectItem>
+                            <SelectItem value="sent">Sent</SelectItem>
+                            <SelectItem value="paid">Paid</SelectItem>
+                            <SelectItem value="overdue">Overdue</SelectItem>
+                            <SelectItem value="partial">Partial</SelectItem>
+                            <SelectItem value="void">Void</SelectItem>
+                            <SelectItem value="pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                 </div>
               </div>
 
