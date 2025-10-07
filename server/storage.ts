@@ -24,6 +24,14 @@ import {
   type StockTransaction,
   type InsertStockTransaction,
   type RefreshToken,
+  type Lead,
+  type InsertLead,
+  type Deal,
+  type InsertDeal,
+  type Activity,
+  type InsertActivity,
+  type Task,
+  type InsertTask,
   users,
   organizations,
   memberships,
@@ -38,6 +46,10 @@ import {
   stockTransactions,
   sequenceCounters,
   refreshTokens,
+  leads,
+  deals,
+  activities,
+  tasks,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, sql, lt } from "drizzle-orm";
@@ -119,6 +131,31 @@ export interface IStorage {
   revokeRefreshToken(tokenHash: string): Promise<void>;
   revokeAllUserRefreshTokens(userId: string): Promise<void>;
   cleanExpiredRefreshTokens(): Promise<void>;
+  
+  getLeadsByOrg(orgId: string): Promise<Lead[]>;
+  getLeadById(id: string): Promise<Lead | null>;
+  createLead(lead: InsertLead): Promise<Lead>;
+  updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead | null>;
+  deleteLead(id: string): Promise<boolean>;
+  
+  getDealsByOrg(orgId: string): Promise<Deal[]>;
+  getDealById(id: string): Promise<Deal | null>;
+  createDeal(deal: InsertDeal): Promise<Deal>;
+  updateDeal(id: string, updates: Partial<InsertDeal>): Promise<Deal | null>;
+  deleteDeal(id: string): Promise<boolean>;
+  
+  getActivitiesByOrg(orgId: string): Promise<Activity[]>;
+  getActivitiesByLead(leadId: string): Promise<Activity[]>;
+  getActivitiesByDeal(dealId: string): Promise<Activity[]>;
+  getActivitiesByCustomer(customerId: string): Promise<Activity[]>;
+  createActivity(activity: InsertActivity): Promise<Activity>;
+  
+  getTasksByOrg(orgId: string): Promise<Task[]>;
+  getTasksByAssignedUser(userId: string, orgId: string): Promise<Task[]>;
+  getTaskById(id: string): Promise<Task | null>;
+  createTask(task: InsertTask): Promise<Task>;
+  updateTask(id: string, updates: Partial<InsertTask>): Promise<Task | null>;
+  deleteTask(id: string): Promise<boolean>;
 }
 
 export class DbStorage implements IStorage {
@@ -508,6 +545,118 @@ export class DbStorage implements IStorage {
     await db
       .delete(refreshTokens)
       .where(lt(refreshTokens.expiresAt, new Date()));
+  }
+
+  async getLeadsByOrg(orgId: string): Promise<Lead[]> {
+    return await db.select().from(leads).where(eq(leads.orgId, orgId));
+  }
+
+  async getLeadById(id: string): Promise<Lead | null> {
+    const result = await db.select().from(leads).where(eq(leads.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createLead(lead: InsertLead): Promise<Lead> {
+    const result = await db.insert(leads).values(lead).returning();
+    return result[0];
+  }
+
+  async updateLead(id: string, updates: Partial<InsertLead>): Promise<Lead | null> {
+    const result = await db
+      .update(leads)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(leads.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteLead(id: string): Promise<boolean> {
+    const result = await db.delete(leads).where(eq(leads.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getDealsByOrg(orgId: string): Promise<Deal[]> {
+    return await db.select().from(deals).where(eq(deals.orgId, orgId));
+  }
+
+  async getDealById(id: string): Promise<Deal | null> {
+    const result = await db.select().from(deals).where(eq(deals.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createDeal(deal: InsertDeal): Promise<Deal> {
+    const result = await db.insert(deals).values(deal).returning();
+    return result[0];
+  }
+
+  async updateDeal(id: string, updates: Partial<InsertDeal>): Promise<Deal | null> {
+    const result = await db
+      .update(deals)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(deals.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteDeal(id: string): Promise<boolean> {
+    const result = await db.delete(deals).where(eq(deals.id, id)).returning();
+    return result.length > 0;
+  }
+
+  async getActivitiesByOrg(orgId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(eq(activities.orgId, orgId));
+  }
+
+  async getActivitiesByLead(leadId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(eq(activities.leadId, leadId));
+  }
+
+  async getActivitiesByDeal(dealId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(eq(activities.dealId, dealId));
+  }
+
+  async getActivitiesByCustomer(customerId: string): Promise<Activity[]> {
+    return await db.select().from(activities).where(eq(activities.customerId, customerId));
+  }
+
+  async createActivity(activity: InsertActivity): Promise<Activity> {
+    const result = await db.insert(activities).values(activity).returning();
+    return result[0];
+  }
+
+  async getTasksByOrg(orgId: string): Promise<Task[]> {
+    return await db.select().from(tasks).where(eq(tasks.orgId, orgId));
+  }
+
+  async getTasksByAssignedUser(userId: string, orgId: string): Promise<Task[]> {
+    return await db
+      .select()
+      .from(tasks)
+      .where(and(eq(tasks.assignedTo, userId), eq(tasks.orgId, orgId)));
+  }
+
+  async getTaskById(id: string): Promise<Task | null> {
+    const result = await db.select().from(tasks).where(eq(tasks.id, id)).limit(1);
+    return result[0] || null;
+  }
+
+  async createTask(task: InsertTask): Promise<Task> {
+    const result = await db.insert(tasks).values(task).returning();
+    return result[0];
+  }
+
+  async updateTask(id: string, updates: Partial<InsertTask>): Promise<Task | null> {
+    const result = await db
+      .update(tasks)
+      .set({ ...updates, updatedAt: new Date() })
+      .where(eq(tasks.id, id))
+      .returning();
+    return result[0] || null;
+  }
+
+  async deleteTask(id: string): Promise<boolean> {
+    const result = await db.delete(tasks).where(eq(tasks.id, id)).returning();
+    return result.length > 0;
   }
 }
 

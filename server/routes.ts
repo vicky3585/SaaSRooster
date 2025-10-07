@@ -11,6 +11,10 @@ import stockTransactionsRoutes from "./routes/stockTransactions";
 import expensesRoutes from "./routes/expenses";
 import membershipsRoutes from "./routes/memberships";
 import organizationsRoutes from "./routes/organizations";
+import leadsRoutes from "./routes/leads";
+import dealsRoutes from "./routes/deals";
+import activitiesRoutes from "./routes/activities";
+import tasksRoutes from "./routes/tasks";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -25,6 +29,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/expenses", expensesRoutes);
   app.use("/api/memberships", membershipsRoutes);
   app.use("/api/organizations", organizationsRoutes);
+  app.use("/api/leads", leadsRoutes);
+  app.use("/api/deals", dealsRoutes);
+  app.use("/api/activities", activitiesRoutes);
+  app.use("/api/tasks", tasksRoutes);
 
   const httpServer = createServer(app);
 
