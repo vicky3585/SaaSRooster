@@ -349,8 +349,33 @@ export default function Invoices() {
     }
   };
 
-  const handleDownloadPDF = (invoice: Invoice) => {
-    window.open(`/api/invoices/${invoice.id}/pdf`, '_blank');
+  const handleDownloadPDF = async (invoice: Invoice) => {
+    try {
+      const response = await fetch(`/api/invoices/${invoice.id}/pdf`, {
+        method: 'GET',
+        credentials: 'include',
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to fetch PDF');
+      }
+
+      const html = await response.text();
+      const printWindow = window.open('', '_blank');
+      if (printWindow) {
+        printWindow.document.write(html);
+        printWindow.document.close();
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to generate PDF. Please try again.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleSubmit = (values: InvoiceFormValues) => {
