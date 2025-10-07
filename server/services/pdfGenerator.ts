@@ -1,5 +1,6 @@
 import type { Invoice, InvoiceItem, Customer, Organization } from "../../shared/schema";
-import puppeteer from "puppeteer";
+// @ts-ignore - html-pdf-node doesn't have TypeScript types
+import htmlPdf from 'html-pdf-node';
 
 interface InvoiceData {
   invoice: Invoice;
@@ -141,43 +142,26 @@ export function generateInvoiceHTML(data: InvoiceData): string {
 export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
   const html = generateInvoiceHTML(data);
   
-  console.log('Launching Puppeteer browser...');
-  const browser = await puppeteer.launch({
-    headless: true,
-    args: [
-      '--no-sandbox', 
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--disable-gpu'
-    ],
-  });
+  console.log('Generating PDF with html-pdf-node...');
+  
+  const file = { content: html };
+  const options = { 
+    format: 'A4',
+    printBackground: true,
+    margin: {
+      top: '20px',
+      right: '20px',
+      bottom: '20px',
+      left: '20px',
+    }
+  };
 
   try {
-    console.log('Creating new page...');
-    const page = await browser.newPage();
-    
-    console.log('Setting HTML content...');
-    await page.setContent(html, { waitUntil: 'networkidle0' });
-    
-    console.log('Generating PDF...');
-    const pdfBuffer = await page.pdf({
-      format: 'A4',
-      printBackground: true,
-      margin: {
-        top: '20px',
-        right: '20px',
-        bottom: '20px',
-        left: '20px',
-      },
-    });
-
+    const pdfBuffer = await htmlPdf.generatePdf(file, options);
     console.log('PDF generated successfully, buffer size:', pdfBuffer.length);
-    return Buffer.from(pdfBuffer);
+    return pdfBuffer as Buffer;
   } catch (error) {
     console.error('Error generating PDF:', error);
     throw error;
-  } finally {
-    await browser.close();
-    console.log('Browser closed');
   }
 }
