@@ -41,6 +41,7 @@ import platformSettingsRoutes from "./routes/platformSettings";
 import paymentGatewaysRoutes from "./routes/paymentGateways";
 import subscriptionPaymentsRoutes from "./routes/subscriptionPayments";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
+import { authenticateToken } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -61,39 +62,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api", checkTrialStatus);
   
   // Protected org routes with subscription requirement
-  app.use("/api/dashboard", requireActiveSubscription, dashboardRoutes);
+  app.use("/api/dashboard", authenticateToken, requireActiveSubscription, dashboardRoutes);
   app.use("/api/users", usersRoutes);
-  app.use("/api/customers", requireActiveSubscription, customersRoutes);
-  app.use("/api/vendors", requireActiveSubscription, vendorsRoutes);
-  app.use("/api/invoices", requireActiveSubscription, invoicesRoutes);
-  app.use("/api/warehouses", requireActiveSubscription, warehousesRoutes);
-  app.use("/api/items", requireActiveSubscription, itemsRoutes);
-  app.use("/api/stock-transactions", requireActiveSubscription, stockTransactionsRoutes);
-  app.use("/api/expenses", requireActiveSubscription, expensesRoutes);
+  app.use("/api/customers", authenticateToken, requireActiveSubscription, customersRoutes);
+  app.use("/api/vendors", authenticateToken, requireActiveSubscription, vendorsRoutes);
+  app.use("/api/invoices", authenticateToken, requireActiveSubscription, invoicesRoutes);
+  app.use("/api/warehouses", authenticateToken, requireActiveSubscription, warehousesRoutes);
+  app.use("/api/items", authenticateToken, requireActiveSubscription, itemsRoutes);
+  app.use("/api/stock-transactions", authenticateToken, requireActiveSubscription, stockTransactionsRoutes);
+  app.use("/api/expenses", authenticateToken, requireActiveSubscription, expensesRoutes);
   app.use("/api/memberships", membershipsRoutes); // No subscription check for memberships
   app.use("/api/organizations", organizationsRoutes); // No subscription check for org management
-  app.use("/api/payment-gateways", requireActiveSubscription, paymentGatewaysRoutes);
-  app.use("/api/org-gstins", requireActiveSubscription, orgGstinsRoutes);
-  app.use("/api/financial-years", requireActiveSubscription, financialYearsRoutes);
-  app.use("/api/units", requireActiveSubscription, unitsRoutes);
-  app.use("/api/gst-rates", requireActiveSubscription, gstRatesRoutes);
-  app.use("/api/price-lists", requireActiveSubscription, priceListsRoutes);
-  app.use("/api/leads", requireActiveSubscription, leadsRoutes);
-  app.use("/api/deals", requireActiveSubscription, dealsRoutes);
-  app.use("/api/activities", requireActiveSubscription, activitiesRoutes);
-  app.use("/api/tasks", requireActiveSubscription, tasksRoutes);
-  app.use("/api/accounts", requireActiveSubscription, accountsRoutes);
-  app.use("/api/contacts", requireActiveSubscription, contactsRoutes);
-  app.use("/api/deal-stages", requireActiveSubscription, dealStagesRoutes);
-  app.use("/api/chart-of-accounts", requireActiveSubscription, chartOfAccountsRoutes);
-  app.use("/api/journals", requireActiveSubscription, journalsRoutes);
-  app.use("/api/tickets", requireActiveSubscription, ticketsRoutes);
-  app.use("/api/teams", requireActiveSubscription, teamsRoutes);
-  app.use("/api/notes", requireActiveSubscription, notesRoutes);
-  app.use("/api/attachments", requireActiveSubscription, attachmentsRoutes);
-  app.use("/api/recurring-invoices", requireActiveSubscription, recurringInvoicesRoutes);
-  app.use("/api/search", requireActiveSubscription, searchRoutes);
-  app.use("/api/ai", requireActiveSubscription, aiRoutes);
+  app.use("/api/payment-gateways", authenticateToken, requireActiveSubscription, paymentGatewaysRoutes);
+  app.use("/api/org-gstins", authenticateToken, requireActiveSubscription, orgGstinsRoutes);
+  app.use("/api/financial-years", authenticateToken, requireActiveSubscription, financialYearsRoutes);
+  app.use("/api/units", authenticateToken, requireActiveSubscription, unitsRoutes);
+  app.use("/api/gst-rates", authenticateToken, requireActiveSubscription, gstRatesRoutes);
+  app.use("/api/price-lists", authenticateToken, requireActiveSubscription, priceListsRoutes);
+  app.use("/api/leads", authenticateToken, requireActiveSubscription, leadsRoutes);
+  app.use("/api/deals", authenticateToken, requireActiveSubscription, dealsRoutes);
+  app.use("/api/activities", authenticateToken, requireActiveSubscription, activitiesRoutes);
+  app.use("/api/tasks", authenticateToken, requireActiveSubscription, tasksRoutes);
+  app.use("/api/accounts", authenticateToken, requireActiveSubscription, accountsRoutes);
+  app.use("/api/contacts", authenticateToken, requireActiveSubscription, contactsRoutes);
+  app.use("/api/deal-stages", authenticateToken, requireActiveSubscription, dealStagesRoutes);
+  app.use("/api/chart-of-accounts", authenticateToken, requireActiveSubscription, chartOfAccountsRoutes);
+  app.use("/api/journals", authenticateToken, requireActiveSubscription, journalsRoutes);
+  app.use("/api/tickets", authenticateToken, requireActiveSubscription, ticketsRoutes);
+  app.use("/api/teams", authenticateToken, requireActiveSubscription, teamsRoutes);
+  app.use("/api/notes", authenticateToken, requireActiveSubscription, notesRoutes);
+  app.use("/api/attachments", authenticateToken, requireActiveSubscription, attachmentsRoutes);
+  app.use("/api/recurring-invoices", authenticateToken, requireActiveSubscription, recurringInvoicesRoutes);
+  app.use("/api/search", authenticateToken, requireActiveSubscription, searchRoutes);
+  app.use("/api/ai", authenticateToken, requireActiveSubscription, aiRoutes);
 
   const httpServer = createServer(app);
 
