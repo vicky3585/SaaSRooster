@@ -2,7 +2,16 @@
 
 ## Overview
 
-Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal for Indian businesses, ensuring GST compliance. It offers comprehensive financial management including invoicing, customer/vendor management, expense tracking, inventory, and GST reporting (GSTR-1, GSTR-3B). The application includes CRM, Support, and Accounting modules, with features like multi-GSTIN support, financial year management, and AI-powered invoice email automation.
+Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal for Indian businesses, ensuring GST compliance. It offers comprehensive financial management including invoicing, customer/vendor management, expense tracking, inventory, and GST reporting (GSTR-1, GSTR-3B). The application includes CRM, Support, and Accounting modules, with features like multi-GSTIN support, financial year management, AI-powered invoice email automation, and platform admin tools for user management.
+
+## Recent Changes
+
+### Admin Password Reset Feature (October 2025)
+- **Platform Admin Password Reset**: Platform administrators can now reset passwords for organization users through the Admin Panel
+  - Access via Admin Panel → Organizations → "Users" button → Select user → "Reset Password"
+  - Includes proper dialog state management for managing multiple organizations
+  - Security: Only platform_admin role can access, includes audit logging with IP and user agent tracking
+  - API endpoint: `POST /api/admin/users/:userId/reset-password`
 
 ## User Preferences
 
