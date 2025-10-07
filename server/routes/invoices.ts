@@ -5,6 +5,7 @@ import { insertInvoiceSchema, type Invoice } from "@shared/schema";
 import { authenticateToken, type AuthRequest } from "../middleware/auth";
 import { validateOrgAccess } from "../middleware/orgIsolation";
 import { generateInvoiceNumber, previewNextInvoiceNumber } from "../services/invoiceNumbering";
+import { generateInvoiceHTML } from "../services/pdfGenerator";
 
 const router = Router();
 
@@ -51,7 +52,10 @@ router.get("/:id", async (req: AuthRequest, res) => {
       return res.status(403).json({ message: "Access denied" });
     }
     
-    res.json(invoice);
+    // Get invoice items
+    const items = await storage.getInvoiceItemsByInvoice(invoice.id);
+    
+    res.json({ ...invoice, items });
   } catch (error) {
     console.error("Get invoice error:", error);
     res.status(500).json({ message: "Internal server error" });
@@ -165,6 +169,46 @@ router.delete("/:id", async (req: AuthRequest, res) => {
     }
   } catch (error) {
     console.error("Delete invoice error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+router.get("/:id/pdf", async (req: AuthRequest, res) => {
+  try {
+    const invoice = await storage.getInvoiceById(req.params.id);
+    
+    if (!invoice) {
+      return res.status(404).json({ message: "Invoice not found" });
+    }
+    
+    if (invoice.orgId !== req.user!.currentOrgId) {
+      return res.status(403).json({ message: "Access denied" });
+    }
+    
+    // Get all related data
+    const [items, customer, organization] = await Promise.all([
+      storage.getInvoiceItemsByInvoice(invoice.id),
+      storage.getCustomerById(invoice.customerId),
+      storage.getOrganizationById(invoice.orgId),
+    ]);
+    
+    if (!customer || !organization) {
+      return res.status(500).json({ message: "Failed to load invoice data" });
+    }
+    
+    // Generate HTML
+    const html = generateInvoiceHTML({
+      invoice,
+      items,
+      customer,
+      organization,
+    });
+    
+    res.setHeader('Content-Type', 'text/html');
+    res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.invoiceNumber}.html"`);
+    res.send(html);
+  } catch (error) {
+    console.error("Generate PDF error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
