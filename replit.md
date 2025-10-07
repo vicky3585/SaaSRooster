@@ -32,7 +32,23 @@ Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and acc
 
 ## Recent Changes
 
-### Phase 1: Enhanced Master Data & Multi-GSTIN Support (Latest)
+### Invoice Email Automation with AI (Latest - October 2025)
+- **AI-Powered Invoice Emails:** Send invoices directly to customers with single click
+  - OpenAI integration generates personalized, professional email content
+  - AI-generated subject lines and email body based on invoice details
+  - Automatic email delivery via Resend API
+  - Invoice status auto-updates to "sent" after successful email delivery
+- **Email Service Integration:**
+  - Resend for reliable transactional email delivery (configured via RESEND_API_KEY secret)
+  - Fallback templates if AI generation fails
+  - Error handling and user feedback via toast notifications
+
+**API Endpoints Added:**
+- `POST /api/invoices/:id/send` - Send invoice to customer via email with AI-generated content
+
+**Note:** Using manual Resend API key configuration (RESEND_API_KEY secret) instead of Replit connector integration per user preference.
+
+### Phase 1: Enhanced Master Data & Multi-GSTIN Support
 - **Multi-GSTIN Support:** Organizations can now manage multiple GSTINs with `org_gstins` table
   - Each GSTIN has type (regular, composition, SEZ, export), state code, legal/trade name
   - Set default GSTIN for invoicing per organization
