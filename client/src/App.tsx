@@ -28,6 +28,7 @@ import Quotations from "@/pages/Quotations";
 import ProformaInvoice from "@/pages/ProformaInvoice";
 import PurchaseOrders from "@/pages/PurchaseOrders";
 import PurchaseInvoices from "@/pages/PurchaseInvoices";
+import AdminPanel from "@/pages/AdminPanel";
 import NotFound from "@/pages/not-found";
 import { Bell, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -68,6 +69,7 @@ function AuthenticatedRouter() {
       <Route path="/proforma" component={() => <ProtectedRoute component={ProformaInvoice} />} />
       <Route path="/purchase-orders" component={() => <ProtectedRoute component={PurchaseOrders} />} />
       <Route path="/purchase-invoices" component={() => <ProtectedRoute component={PurchaseInvoices} />} />
+      <Route path="/admin" component={() => <ProtectedRoute component={AdminPanel} />} />
       <Route path="/reports" component={() => <ProtectedRoute component={Reports} />} />
       <Route path="/settings" component={() => <ProtectedRoute component={Settings} />} />
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
