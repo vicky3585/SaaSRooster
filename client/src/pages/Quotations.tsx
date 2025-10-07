@@ -273,11 +273,41 @@ export default function Quotations() {
 
   const handleDownloadPDF = async (quotation: Invoice) => {
     try {
-      const response = await fetch(`/api/invoices/${quotation.id}/pdf`, {
-        headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-        },
-      });
+      const makeRequest = async (token: string | null) => {
+        const headers: Record<string, string> = {};
+        
+        if (token) {
+          headers['Authorization'] = `Bearer ${token}`;
+        }
+
+        return await fetch(`/api/invoices/${quotation.id}/pdf`, {
+          headers,
+          credentials: 'include',
+        });
+      };
+
+      let accessToken = localStorage.getItem('accessToken');
+      let response = await makeRequest(accessToken);
+
+      // Handle token refresh if unauthorized
+      if (response.status === 401) {
+        try {
+          const refreshRes = await fetch('/api/auth/refresh', {
+            method: 'POST',
+            credentials: 'include',
+          });
+          
+          if (refreshRes.ok) {
+            const refreshData = await refreshRes.json();
+            if (refreshData.accessToken) {
+              localStorage.setItem('accessToken', refreshData.accessToken);
+              response = await makeRequest(refreshData.accessToken);
+            }
+          }
+        } catch (refreshError) {
+          throw new Error('Authentication failed. Please login again.');
+        }
+      }
       
       if (!response.ok) {
         throw new Error('Failed to download PDF');
