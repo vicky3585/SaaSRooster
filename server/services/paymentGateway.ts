@@ -35,24 +35,22 @@ export class PaymentGatewayService {
    * Get active payment gateway for an organization
    */
   async getActiveGateway(orgId: string, gatewayName?: string) {
-    let query = db
-      .select()
-      .from(paymentGatewayConfigs)
-      .where(
-        and(
-          eq(paymentGatewayConfigs.orgId, orgId),
-          eq(paymentGatewayConfigs.isActive, true)
-        )
-      );
+    const conditions = [
+      eq(paymentGatewayConfigs.orgId, orgId),
+      eq(paymentGatewayConfigs.isActive, true)
+    ];
 
     if (gatewayName) {
-      query = query.where(eq(paymentGatewayConfigs.gatewayName, gatewayName));
+      conditions.push(eq(paymentGatewayConfigs.gatewayName, gatewayName));
     } else {
-      // Get default gateway
-      query = query.where(eq(paymentGatewayConfigs.isDefault, true));
+      conditions.push(eq(paymentGatewayConfigs.isDefault, true));
     }
 
-    const [config] = await query;
+    const [config] = await db
+      .select()
+      .from(paymentGatewayConfigs)
+      .where(and(...conditions));
+
     return config;
   }
 

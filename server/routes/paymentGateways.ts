@@ -91,7 +91,7 @@ router.post("/", async (req: AuthRequest, res) => {
 
     const [config] = await db
       .insert(paymentGatewayConfigs)
-      .values(body)
+      .values(body as any)
       .returning();
 
     res.status(201).json(config);
@@ -145,12 +145,14 @@ router.patch("/:id", async (req: AuthRequest, res) => {
         );
     }
 
+    const updateData: any = {
+      ...body,
+      updatedAt: new Date(),
+    };
+
     const [updated] = await db
       .update(paymentGatewayConfigs)
-      .set({
-        ...body,
-        updatedAt: new Date(),
-      })
+      .set(updateData)
       .where(eq(paymentGatewayConfigs.id, req.params.id))
       .returning();
 
