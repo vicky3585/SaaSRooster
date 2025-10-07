@@ -38,6 +38,7 @@ import adminRoutes from "./routes/admin";
 import adminAuthRoutes from "./routes/adminAuth";
 import subscriptionPlansRoutes from "./routes/subscriptionPlans";
 import platformSettingsRoutes from "./routes/platformSettings";
+import paymentGatewaysRoutes from "./routes/paymentGateways";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 
 export async function registerRoutes(app: Express): Promise<Server> {
@@ -67,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/expenses", requireActiveSubscription, expensesRoutes);
   app.use("/api/memberships", membershipsRoutes); // No subscription check for memberships
   app.use("/api/organizations", organizationsRoutes); // No subscription check for org management
+  app.use("/api/payment-gateways", requireActiveSubscription, paymentGatewaysRoutes);
   app.use("/api/org-gstins", requireActiveSubscription, orgGstinsRoutes);
   app.use("/api/financial-years", requireActiveSubscription, financialYearsRoutes);
   app.use("/api/units", requireActiveSubscription, unitsRoutes);
