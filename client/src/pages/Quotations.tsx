@@ -25,7 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import StatusBadge from "@/components/StatusBadge";
-import { Search, Plus, Edit, Trash2, Send, FileCheck, X } from "lucide-react";
+import { Search, Plus, Edit, Trash2, Send, FileCheck, X, Download } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
@@ -269,6 +269,41 @@ export default function Quotations() {
   const handleConvertToInvoice = (quotation: Invoice) => {
     setConvertingQuotation(quotation);
     setConvertDialogOpen(true);
+  };
+
+  const handleDownloadPDF = async (quotation: Invoice) => {
+    try {
+      const response = await fetch(`/api/invoices/${quotation.id}/pdf`, {
+        headers: {
+          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+        },
+      });
+      
+      if (!response.ok) {
+        throw new Error('Failed to download PDF');
+      }
+      
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `quotation-${quotation.invoiceNumber}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      window.URL.revokeObjectURL(url);
+      document.body.removeChild(a);
+      
+      toast({
+        title: "PDF downloaded",
+        description: "Quotation PDF has been downloaded successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "Failed to download PDF",
+        description: error instanceof Error ? error.message : "Something went wrong",
+        variant: "destructive",
+      });
+    }
   };
 
   const confirmConvertToInvoice = () => {
@@ -578,6 +613,14 @@ export default function Quotations() {
                   </TableCell>
                   <TableCell className="text-right">
                     <div className="flex justify-end gap-2">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleDownloadPDF(quotation)}
+                        data-testid={`button-download-${quotation.id}`}
+                      >
+                        <Download className="w-4 h-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"

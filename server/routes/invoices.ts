@@ -300,17 +300,24 @@ router.get("/:id/pdf", async (req: AuthRequest, res) => {
       return res.status(500).json({ message: "Failed to load invoice data" });
     }
     
-    // Generate HTML
-    const html = generateInvoiceHTML({
+    // Import generateInvoicePDF
+    const { generateInvoicePDF } = await import("../services/pdfGenerator");
+    
+    // Generate PDF
+    const pdfBuffer = await generateInvoicePDF({
       invoice,
       items,
       customer,
       organization,
     });
     
-    res.setHeader('Content-Type', 'text/html');
-    res.setHeader('Content-Disposition', `inline; filename="invoice-${invoice.invoiceNumber}.html"`);
-    res.send(html);
+    // Determine if it's a quotation or invoice for the filename
+    const docType = invoice.status === 'draft' ? 'quotation' : 'invoice';
+    const fileName = `${docType}-${invoice.invoiceNumber}.pdf`;
+    
+    res.setHeader('Content-Type', 'application/pdf');
+    res.setHeader('Content-Disposition', `attachment; filename="${fileName}"`);
+    res.send(pdfBuffer);
   } catch (error) {
     console.error("Generate PDF error:", error);
     res.status(500).json({ message: "Internal server error" });
