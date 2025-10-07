@@ -39,7 +39,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import StatusBadge from "@/components/StatusBadge";
-import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2, X } from "lucide-react";
+import { Search, Plus, MoreVertical, Eye, Edit, Trash2, Download, Loader2, X, Sparkles, Wand2 } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { useForm, useFieldArray } from "react-hook-form";
@@ -279,6 +279,83 @@ export default function Invoices() {
   };
 
   const totals = calculateTotals();
+
+  // AI-powered suggestion functions
+  const generateAIDescription = async (index: number) => {
+    const itemId = form.watch(`lineItems.${index}.itemId`);
+    if (!itemId) return;
+    
+    const selectedItem = items.find(i => i.id === itemId);
+    if (!selectedItem) return;
+    
+    try {
+      const response = await apiRequest("POST", "/api/ai/generate-description", {
+        itemName: selectedItem.name,
+      });
+      const data = await response.json();
+      form.setValue(`lineItems.${index}.description`, data.description);
+      toast({
+        title: "AI Generated",
+        description: "Description generated successfully",
+      });
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: "Failed to generate description",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const suggestAIHSN = async (index: number) => {
+    const description = form.watch(`lineItems.${index}.description`);
+    if (!description) return;
+    
+    try {
+      const response = await apiRequest("POST", "/api/ai/suggest-hsn", {
+        itemDescription: description,
+      });
+      const data = await response.json();
+      if (data.code) {
+        form.setValue(`lineItems.${index}.hsnCode`, data.code);
+        toast({
+          title: "AI Suggested",
+          description: data.description || "HSN code suggested",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: "Failed to suggest HSN code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const suggestAITaxRate = async (index: number) => {
+    const description = form.watch(`lineItems.${index}.description`);
+    if (!description) return;
+    
+    try {
+      const response = await apiRequest("POST", "/api/ai/suggest-tax-rate", {
+        itemDescription: description,
+      });
+      const data = await response.json();
+      if (data.taxRate !== undefined) {
+        form.setValue(`lineItems.${index}.taxRate`, data.taxRate);
+        toast({
+          title: "AI Suggested",
+          description: `Tax rate: ${data.taxRate}%`,
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "AI Error",
+        description: "Failed to suggest tax rate",
+        variant: "destructive",
+      });
+    }
+  };
 
   return (
     <div className="p-6 space-y-6" data-testid="page-invoices">
@@ -550,32 +627,56 @@ export default function Invoices() {
                                   ))}
                                 </SelectContent>
                               </Select>
-                              <FormField
-                                control={form.control}
-                                name={`lineItems.${index}.description`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormControl>
-                                      <Input {...field} placeholder="Description" data-testid={`input-description-${index}`} />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
+                              <div className="flex gap-2">
+                                <FormField
+                                  control={form.control}
+                                  name={`lineItems.${index}.description`}
+                                  render={({ field }) => (
+                                    <FormItem className="flex-1">
+                                      <FormControl>
+                                        <Input {...field} placeholder="Description" data-testid={`input-description-${index}`} />
+                                      </FormControl>
+                                      <FormMessage />
+                                    </FormItem>
+                                  )}
+                                />
+                                <Button
+                                  type="button"
+                                  variant="outline"
+                                  size="icon"
+                                  onClick={() => generateAIDescription(index)}
+                                  title="Generate AI description"
+                                  data-testid={`button-ai-description-${index}`}
+                                >
+                                  <Sparkles className="w-4 h-4" />
+                                </Button>
+                              </div>
                             </div>
                           </TableCell>
                           <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`lineItems.${index}.hsnCode`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input {...field} placeholder="HSN" data-testid={`input-hsn-${index}`} />
-                                  </FormControl>
-                                </FormItem>
-                              )}
-                            />
+                            <div className="flex gap-2">
+                              <FormField
+                                control={form.control}
+                                name={`lineItems.${index}.hsnCode`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input {...field} placeholder="HSN" data-testid={`input-hsn-${index}`} />
+                                    </FormControl>
+                                  </FormItem>
+                                )}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => suggestAIHSN(index)}
+                                title="AI suggest HSN"
+                                data-testid={`button-ai-hsn-${index}`}
+                              >
+                                <Wand2 className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell>
                             <FormField
@@ -618,24 +719,36 @@ export default function Invoices() {
                             />
                           </TableCell>
                           <TableCell>
-                            <FormField
-                              control={form.control}
-                              name={`lineItems.${index}.taxRate`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormControl>
-                                    <Input
-                                      {...field}
-                                      type="number"
-                                      step="0.01"
-                                      onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
-                                      data-testid={`input-tax-rate-${index}`}
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
+                            <div className="flex gap-2">
+                              <FormField
+                                control={form.control}
+                                name={`lineItems.${index}.taxRate`}
+                                render={({ field }) => (
+                                  <FormItem className="flex-1">
+                                    <FormControl>
+                                      <Input
+                                        {...field}
+                                        type="number"
+                                        step="0.01"
+                                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                                        data-testid={`input-tax-rate-${index}`}
+                                      />
+                                    </FormControl>
+                                    <FormMessage />
+                                  </FormItem>
+                                )}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="icon"
+                                onClick={() => suggestAITaxRate(index)}
+                                title="AI suggest tax rate"
+                                data-testid={`button-ai-tax-${index}`}
+                              >
+                                <Sparkles className="w-4 h-4" />
+                              </Button>
+                            </div>
                           </TableCell>
                           <TableCell className="font-semibold">
                             ₹{calculateLineTotal(index).toFixed(2)}

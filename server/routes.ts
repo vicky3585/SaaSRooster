@@ -32,6 +32,7 @@ import orgGstinsRoutes from "./routes/orgGstins";
 import financialYearsRoutes from "./routes/financialYears";
 import vendorsRoutes from "./routes/vendors";
 import priceListsRoutes from "./routes/priceLists";
+import aiRoutes from "./routes/ai";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
@@ -67,6 +68,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/attachments", attachmentsRoutes);
   app.use("/api/recurring-invoices", recurringInvoicesRoutes);
   app.use("/api/search", searchRoutes);
+  app.use("/api/ai", aiRoutes);
 
   const httpServer = createServer(app);
 
