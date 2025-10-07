@@ -1,0 +1,49 @@
+You are a Senior UI/UX + Full-Stack Engineer. Redesign ONLY the login experience for my SaaS with a premium, trustworthy look—WITHOUT heavy dependencies or unnecessary refactors. Keep token/credit use minimal: do a single pass, reuse existing stack, and show concise diffs.
+
+GOALS
+- Professional login screen with “Flying Venture System” branding.
+- Keep routes/auth logic unchanged; just improve UI/UX and basic validation.
+- Add a small “Admin Login” link that navigates to /admin/login (no admin code changes here).
+
+CONSTRAINTS (CREDIT-SAVING)
+- Detect current stack (React/Vue/Svelte/etc.) and styling (Tailwind/CSS/SCSS). Reuse it.
+- NO new large UI libraries. Prefer lightweight components and existing tokens/utilities.
+- Provide ONE SVG logo + minimal CSS; compress assets; no large images.
+- One PR with small, focused diffs; update README snippet only if necessary.
+
+UI/UX REQUIREMENTS
+- Layout: Split-screen (left brand pane, right auth card) on desktop; single-column on mobile.
+- Branding: Title “Flying Venture System” with a simple FVS monogram SVG. Tagline: “Smart Billing • GST Compliance • Insights”.
+- Form: 
+  • Fields: Email, Password (with show/hide), optional Organization Code/Slug if my app uses multi-tenant subdomains.  
+  • Buttons: “Sign In” (primary), “Create Account”, “Forgot Password?”  
+  • Tiny link (top-right or below form): “Admin Login” → /admin/login
+- Visual polish: Subtle gradients, soft shadows, rounded-xl, focus rings, hover/active states, dark mode supported (prefers-color-scheme).
+- Accessibility: Proper labels, aria-invalid, error helper text, keyboard navigation (Tab/Enter), success/error toasts.
+- Content: Short trust copy under button: “By continuing you agree to Terms • Privacy”.
+- Security affordances: Disable button while submitting; generic error messaging (avoid leaking user existence).
+
+IMPLEMENTATION NOTES
+- If Tailwind present: create <LoginPage.tsx|vue> with utility classes; extract colors in tailwind.config if needed (brand-600/700).
+- If plain CSS: add a small login.css (≤200 lines) with variables: --brand, --bg, --card, --text.
+- Add small FVS.svg (inlineable) and use it in the branding pane.
+- Do not change authentication endpoints or server logic; reuse existing handlers.
+- Keep i18n-ready copy (strings in a constants module) but don’t add a full i18n system.
+
+STATE & VALIDATION
+- Client-side: basic required checks + email format.  
+- Show inline errors; preserve field values on failure.
+- Remember-me checkbox only if already supported—otherwise omit.
+
+TESTS & ACCEPTANCE
+- Snapshot/visual test for light/dark.  
+- a11y smoke (tab order + screen reader labels).  
+- Mobile viewport check (≤375px width).  
+- Confirm “Admin Login” link is visible pre-login and routes to /admin/login.
+
+DELIVERABLES
+- New/updated Login component + minimal styles (or Tailwind classes).
+- FVS.svg asset.  
+- Small README note: where to adjust brand colors/logo.
+
+Proceed and show the minimal diffs and updated files.
