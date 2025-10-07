@@ -9,11 +9,22 @@ import {
   Settings,
   Building2,
   ChevronDown,
+  ChevronRight,
   Target,
   UserCircle,
   Briefcase,
   BookOpen,
   Headphones,
+  ShoppingCart,
+  Store,
+  Wrench,
+  Database,
+  FileCheck,
+  RotateCcw,
+  Truck,
+  FileSpreadsheet,
+  CreditCard,
+  StickyNote,
 } from "lucide-react";
 import {
   Sidebar,
@@ -24,105 +35,57 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarMenuSub,
+  SidebarMenuSubButton,
+  SidebarMenuSubItem,
   SidebarHeader,
-  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { useLocation } from "wouter";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import { useState } from "react";
 
-const menuItems = [
-  {
-    title: "Dashboard",
-    url: "/",
-    icon: LayoutDashboard,
-  },
-  {
-    title: "Reports",
-    url: "/reports",
-    icon: FileText,
-  },
+const saleSubItems = [
+  { title: "Invoice", url: "/invoices", icon: Receipt },
+  { title: "Sale Return", url: "/sale-return", icon: RotateCcw },
+  { title: "Quotation", url: "/quotations", icon: FileCheck },
+  { title: "Delivery Note", url: "/delivery-notes", icon: Truck },
+  { title: "Proforma Invoice", url: "/proforma", icon: FileSpreadsheet },
+  { title: "Sale Order", url: "/sale-orders", icon: ShoppingCart },
+  { title: "Credit Note", url: "/credit-notes", icon: CreditCard },
+  { title: "Debit Note", url: "/debit-notes", icon: StickyNote },
 ];
 
-const crmItems = [
-  {
-    title: "Leads",
-    url: "/leads",
-    icon: Target,
-  },
-  {
-    title: "Deals",
-    url: "/deals",
-    icon: Briefcase,
-  },
-  {
-    title: "Accounts",
-    url: "/accounts",
-    icon: Building2,
-  },
-  {
-    title: "Contacts",
-    url: "/contacts",
-    icon: UserCircle,
-  },
-  {
-    title: "Customers",
-    url: "/customers",
-    icon: Users,
-  },
-  {
-    title: "Tickets",
-    url: "/tickets",
-    icon: Headphones,
-  },
+const purchaseSubItems = [
+  { title: "Purchase Order", url: "/purchase-orders", icon: ShoppingCart },
+  { title: "Purchase Invoice", url: "/purchase-invoices", icon: Receipt },
+  { title: "Purchase Return", url: "/purchase-return", icon: RotateCcw },
+  { title: "Debit Note", url: "/purchase-debit-notes", icon: StickyNote },
 ];
 
-const billingItems = [
-  {
-    title: "Invoices",
-    url: "/invoices",
-    icon: Receipt,
-  },
-  {
-    title: "Expenses",
-    url: "/expenses",
-    icon: TrendingDown,
-  },
-  {
-    title: "Chart of Accounts",
-    url: "/chart-of-accounts",
-    icon: BookOpen,
-  },
-];
-
-const managementItems = [
-  {
-    title: "Inventory",
-    url: "/inventory",
-    icon: Package,
-  },
-  {
-    title: "Staff",
-    url: "/staff",
-    icon: UserCog,
-  },
-  {
-    title: "Settings",
-    url: "/settings",
-    icon: Settings,
-  },
+const accountsSubItems = [
+  { title: "Chart of Accounts", url: "/chart-of-accounts", icon: BookOpen },
+  { title: "Journals", url: "/journals", icon: FileText },
+  { title: "Trial Balance", url: "/trial-balance", icon: FileSpreadsheet },
 ];
 
 export function AppSidebar() {
   const [location, setLocation] = useLocation();
+  const [saleOpen, setSaleOpen] = useState(false);
+  const [purchaseOpen, setPurchaseOpen] = useState(false);
+  const [accountsOpen, setAccountsOpen] = useState(false);
+
+  const handleNavigation = (url: string) => (e: React.MouseEvent) => {
+    e.preventDefault();
+    setLocation(url);
+  };
 
   return (
     <Sidebar data-testid="sidebar-main">
-      <SidebarHeader className="p-4">
+      <SidebarHeader className="p-4 border-b">
         <div className="flex items-center gap-3">
           <div className="p-2 bg-primary rounded-md">
             <Building2 className="w-6 h-6 text-primary-foreground" />
@@ -130,116 +93,323 @@ export function AppSidebar() {
           <div className="flex-1">
             <h2 className="text-lg font-bold text-sidebar-foreground">Ledgix</h2>
             <p className="text-[10px] text-sidebar-foreground/60">Ledger + Logic</p>
-            <DropdownMenu>
-              <DropdownMenuTrigger className="flex items-center gap-1 text-xs text-sidebar-foreground/70 hover:text-sidebar-foreground transition-colors" data-testid="button-org-switcher">
-                <span>Acme Corporation</span>
-                <ChevronDown className="w-3 h-3" />
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start">
-                <DropdownMenuItem data-testid="org-acme">Acme Corporation</DropdownMenuItem>
-                <DropdownMenuItem data-testid="org-techsolutions">Tech Solutions Ltd</DropdownMenuItem>
-                <DropdownMenuItem data-testid="org-create">+ Create Organization</DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
         </div>
       </SidebarHeader>
+
       <SidebarContent>
         <SidebarGroup>
-          <SidebarGroupLabel>Overview</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+          <SidebarMenu>
+            {/* Dashboard */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/"}
+                data-testid="nav-dashboard"
+              >
+                <a href="/" onClick={handleNavigation("/")}>
+                  <LayoutDashboard className="w-4 h-4" />
+                  <span>Dashboard</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>CRM</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {crmItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </a>
+            {/* Sale with submenu */}
+            <Collapsible open={saleOpen} onOpenChange={setSaleOpen}>
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton data-testid="nav-sale">
+                    <Receipt className="w-4 h-4" />
+                    <span>Sale</span>
+                    {saleOpen ? (
+                      <ChevronDown className="w-4 h-4 ml-auto" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 ml-auto" />
+                    )}
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {saleSubItems.map((item) => (
+                      <SidebarMenuSubItem key={item.url}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={location === item.url}
+                        >
+                          <a href={item.url} onClick={handleNavigation(item.url)}>
+                            <item.icon className="w-3 h-3" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Billing</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {billingItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+            {/* Online Store */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/online-store"}
+                data-testid="nav-online-store"
+              >
+                <a href="/online-store" onClick={handleNavigation("/online-store")}>
+                  <Store className="w-4 h-4" />
+                  <span>Online Store</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
 
-        <SidebarGroup>
-          <SidebarGroupLabel>Management</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {managementItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton
-                    asChild
-                    isActive={location === item.url}
-                    data-testid={`nav-${item.title.toLowerCase()}`}
-                  >
-                    <a href={item.url} onClick={(e) => { e.preventDefault(); setLocation(item.url); }}>
-                      <item.icon className="w-4 h-4" />
-                      <span>{item.title}</span>
-                    </a>
+            {/* Purchase with submenu */}
+            <Collapsible open={purchaseOpen} onOpenChange={setPurchaseOpen}>
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton data-testid="nav-purchase">
+                    <ShoppingCart className="w-4 h-4" />
+                    <span>Purchase</span>
+                    {purchaseOpen ? (
+                      <ChevronDown className="w-4 h-4 ml-auto" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 ml-auto" />
+                    )}
                   </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {purchaseSubItems.map((item) => (
+                      <SidebarMenuSubItem key={item.url}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={location === item.url}
+                        >
+                          <a href={item.url} onClick={handleNavigation(item.url)}>
+                            <item.icon className="w-3 h-3" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+
+            {/* Inventory */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/inventory"}
+                data-testid="nav-inventory"
+              >
+                <a href="/inventory" onClick={handleNavigation("/inventory")}>
+                  <Package className="w-4 h-4" />
+                  <span>Inventory</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Accounts with submenu */}
+            <Collapsible open={accountsOpen} onOpenChange={setAccountsOpen}>
+              <SidebarMenuItem>
+                <CollapsibleTrigger asChild>
+                  <SidebarMenuButton data-testid="nav-accounts">
+                    <BookOpen className="w-4 h-4" />
+                    <span>Accounts</span>
+                    {accountsOpen ? (
+                      <ChevronDown className="w-4 h-4 ml-auto" />
+                    ) : (
+                      <ChevronRight className="w-4 h-4 ml-auto" />
+                    )}
+                  </SidebarMenuButton>
+                </CollapsibleTrigger>
+                <CollapsibleContent>
+                  <SidebarMenuSub>
+                    {accountsSubItems.map((item) => (
+                      <SidebarMenuSubItem key={item.url}>
+                        <SidebarMenuSubButton
+                          asChild
+                          isActive={location === item.url}
+                        >
+                          <a href={item.url} onClick={handleNavigation(item.url)}>
+                            <item.icon className="w-3 h-3" />
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuSubButton>
+                      </SidebarMenuSubItem>
+                    ))}
+                  </SidebarMenuSub>
+                </CollapsibleContent>
+              </SidebarMenuItem>
+            </Collapsible>
+
+            {/* Expense */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/expenses"}
+                data-testid="nav-expense"
+              >
+                <a href="/expenses" onClick={handleNavigation("/expenses")}>
+                  <TrendingDown className="w-4 h-4" />
+                  <span>Expense</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Customer */}
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/customers"}
+                data-testid="nav-customer"
+              >
+                <a href="/customers" onClick={handleNavigation("/customers")}>
+                  <Users className="w-4 h-4" />
+                  <span>Customer</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* CRM Section */}
+            <SidebarGroupLabel className="mt-4">CRM</SidebarGroupLabel>
+            
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/leads"}
+                data-testid="nav-leads"
+              >
+                <a href="/leads" onClick={handleNavigation("/leads")}>
+                  <Target className="w-4 h-4" />
+                  <span>Leads</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/deals"}
+                data-testid="nav-deals"
+              >
+                <a href="/deals" onClick={handleNavigation("/deals")}>
+                  <Briefcase className="w-4 h-4" />
+                  <span>Deals</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/accounts"}
+                data-testid="nav-crm-accounts"
+              >
+                <a href="/accounts" onClick={handleNavigation("/accounts")}>
+                  <Building2 className="w-4 h-4" />
+                  <span>Accounts</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/contacts"}
+                data-testid="nav-contacts"
+              >
+                <a href="/contacts" onClick={handleNavigation("/contacts")}>
+                  <UserCircle className="w-4 h-4" />
+                  <span>Contacts</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/tickets"}
+                data-testid="nav-tickets"
+              >
+                <a href="/tickets" onClick={handleNavigation("/tickets")}>
+                  <Headphones className="w-4 h-4" />
+                  <span>Tickets</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            {/* Management Section */}
+            <SidebarGroupLabel className="mt-4">Management</SidebarGroupLabel>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/reports"}
+                data-testid="nav-reports"
+              >
+                <a href="/reports" onClick={handleNavigation("/reports")}>
+                  <FileText className="w-4 h-4" />
+                  <span>Reports</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/staff"}
+                data-testid="nav-staff"
+              >
+                <a href="/staff" onClick={handleNavigation("/staff")}>
+                  <UserCog className="w-4 h-4" />
+                  <span>Staff</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/tools"}
+                data-testid="nav-tools"
+              >
+                <a href="/tools" onClick={handleNavigation("/tools")}>
+                  <Wrench className="w-4 h-4" />
+                  <span>Tools</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/master"}
+                data-testid="nav-master"
+              >
+                <a href="/master" onClick={handleNavigation("/master")}>
+                  <Database className="w-4 h-4" />
+                  <span>Master</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+
+            <SidebarMenuItem>
+              <SidebarMenuButton
+                asChild
+                isActive={location === "/settings"}
+                data-testid="nav-settings"
+              >
+                <a href="/settings" onClick={handleNavigation("/settings")}>
+                  <Settings className="w-4 h-4" />
+                  <span>Settings</span>
+                </a>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          </SidebarMenu>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="p-4 border-t border-sidebar-border">
-        <div className="text-xs text-sidebar-foreground/70">
-          <p>FY 2024-25</p>
-          <p className="text-[10px] mt-1">GSTIN: 29ABCDE1234F1Z5</p>
-          <p className="text-[10px] mt-2 text-sidebar-foreground/50">© {new Date().getFullYear()} Flying Venture System</p>
-        </div>
-      </SidebarFooter>
     </Sidebar>
   );
 }
