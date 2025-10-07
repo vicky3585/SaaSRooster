@@ -68,6 +68,15 @@ export const dealStageEnum = pgEnum("deal_stage", [
   "closed_lost",
 ]);
 
+export const purchaseStatusEnum = pgEnum("purchase_status", [
+  "draft",
+  "sent",
+  "confirmed",
+  "partially_received",
+  "received",
+  "cancelled",
+]);
+
 export const activityTypeEnum = pgEnum("activity_type", [
   "call",
   "email",
@@ -898,6 +907,137 @@ export const expenses = pgTable(
   (table) => ({
     orgIdIdx: index("expenses_org_id_idx").on(table.orgId),
     categoryIdx: index("expenses_category_idx").on(table.category),
+  })
+);
+
+// Purchase Orders
+export const purchaseOrders = pgTable(
+  "purchase_orders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    poNumber: text("po_number").notNull(),
+    vendorId: varchar("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "restrict" }),
+    orderDate: timestamp("order_date").notNull(),
+    expectedDeliveryDate: timestamp("expected_delivery_date"),
+    status: purchaseStatusEnum("status").notNull().default("draft"),
+    placeOfSupply: text("place_of_supply").notNull(), // State code or name
+    subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+    cgst: decimal("cgst", { precision: 12, scale: 2 }).default("0"),
+    sgst: decimal("sgst", { precision: 12, scale: 2 }).default("0"),
+    igst: decimal("igst", { precision: 12, scale: 2 }).default("0"),
+    tdsAmount: decimal("tds_amount", { precision: 12, scale: 2 }).default("0"),
+    total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+    termsAndConditions: text("terms_and_conditions"),
+    notes: text("notes"),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("purchase_orders_org_id_idx").on(table.orgId),
+    vendorIdIdx: index("purchase_orders_vendor_id_idx").on(table.vendorId),
+    poNumberUnique: unique().on(table.orgId, table.poNumber),
+    statusIdx: index("purchase_orders_status_idx").on(table.status),
+  })
+);
+
+// Purchase Order Items
+export const purchaseOrderItems = pgTable(
+  "purchase_order_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    purchaseOrderId: varchar("purchase_order_id")
+      .notNull()
+      .references(() => purchaseOrders.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id").references(() => items.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    hsnCode: varchar("hsn_code", { length: 8 }),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    unit: text("unit").default("PCS"),
+    rate: decimal("rate", { precision: 12, scale: 2 }).notNull(),
+    taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).notNull(),
+    total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("purchase_order_items_org_id_idx").on(table.orgId),
+    poIdIdx: index("purchase_order_items_po_id_idx").on(table.purchaseOrderId),
+  })
+);
+
+// Purchase Invoices
+export const purchaseInvoices = pgTable(
+  "purchase_invoices",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    invoiceNumber: text("invoice_number").notNull(), // Vendor's invoice number
+    vendorId: varchar("vendor_id")
+      .notNull()
+      .references(() => vendors.id, { onDelete: "restrict" }),
+    purchaseOrderId: varchar("purchase_order_id").references(() => purchaseOrders.id, { onDelete: "set null" }),
+    invoiceDate: timestamp("invoice_date").notNull(),
+    dueDate: timestamp("due_date").notNull(),
+    status: invoiceStatusEnum("status").notNull().default("draft"),
+    placeOfSupply: text("place_of_supply").notNull(),
+    isReverseCharge: boolean("is_reverse_charge").default(false),
+    subtotal: decimal("subtotal", { precision: 12, scale: 2 }).notNull(),
+    cgst: decimal("cgst", { precision: 12, scale: 2 }).default("0"),
+    sgst: decimal("sgst", { precision: 12, scale: 2 }).default("0"),
+    igst: decimal("igst", { precision: 12, scale: 2 }).default("0"),
+    tdsAmount: decimal("tds_amount", { precision: 12, scale: 2 }).default("0"),
+    total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+    amountDue: decimal("amount_due", { precision: 12, scale: 2 }).notNull(),
+    notes: text("notes"),
+    pdfUrl: text("pdf_url"),
+    createdBy: varchar("created_by").references(() => users.id),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("purchase_invoices_org_id_idx").on(table.orgId),
+    vendorIdIdx: index("purchase_invoices_vendor_id_idx").on(table.vendorId),
+    invoiceNumberIdx: unique().on(table.orgId, table.invoiceNumber),
+    statusIdx: index("purchase_invoices_status_idx").on(table.status),
+  })
+);
+
+// Purchase Invoice Items
+export const purchaseInvoiceItems = pgTable(
+  "purchase_invoice_items",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    purchaseInvoiceId: varchar("purchase_invoice_id")
+      .notNull()
+      .references(() => purchaseInvoices.id, { onDelete: "cascade" }),
+    itemId: varchar("item_id").references(() => items.id, { onDelete: "restrict" }),
+    description: text("description").notNull(),
+    hsnCode: varchar("hsn_code", { length: 8 }),
+    quantity: decimal("quantity", { precision: 10, scale: 2 }).notNull(),
+    unit: text("unit").default("PCS"),
+    rate: decimal("rate", { precision: 12, scale: 2 }).notNull(),
+    taxRate: decimal("tax_rate", { precision: 5, scale: 2 }).notNull(),
+    amount: decimal("amount", { precision: 12, scale: 2 }).notNull(),
+    taxAmount: decimal("tax_amount", { precision: 12, scale: 2 }).notNull(),
+    total: decimal("total", { precision: 12, scale: 2 }).notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("purchase_invoice_items_org_id_idx").on(table.orgId),
+    invoiceIdIdx: index("purchase_invoice_items_invoice_id_idx").on(table.purchaseInvoiceId),
   })
 );
 
@@ -1824,6 +1964,27 @@ export const insertRecurringInvoiceItemSchema = createInsertSchema(recurringInvo
   id: true,
 });
 
+export const insertPurchaseOrderSchema = createInsertSchema(purchaseOrders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertPurchaseOrderItemSchema = createInsertSchema(purchaseOrderItems).omit({
+  id: true,
+});
+
+export const insertPurchaseInvoiceSchema = createInsertSchema(purchaseInvoices).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  pdfUrl: true,
+});
+
+export const insertPurchaseInvoiceItemSchema = createInsertSchema(purchaseInvoiceItems).omit({
+  id: true,
+});
+
 // Select Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -1962,3 +2123,15 @@ export type InsertItemBatch = z.infer<typeof insertItemBatchSchema>;
 
 export type ItemSerial = typeof itemSerials.$inferSelect;
 export type InsertItemSerial = z.infer<typeof insertItemSerialSchema>;
+
+export type PurchaseOrder = typeof purchaseOrders.$inferSelect;
+export type InsertPurchaseOrder = z.infer<typeof insertPurchaseOrderSchema>;
+
+export type PurchaseOrderItem = typeof purchaseOrderItems.$inferSelect;
+export type InsertPurchaseOrderItem = z.infer<typeof insertPurchaseOrderItemSchema>;
+
+export type PurchaseInvoice = typeof purchaseInvoices.$inferSelect;
+export type InsertPurchaseInvoice = z.infer<typeof insertPurchaseInvoiceSchema>;
+
+export type PurchaseInvoiceItem = typeof purchaseInvoiceItems.$inferSelect;
+export type InsertPurchaseInvoiceItem = z.infer<typeof insertPurchaseInvoiceItemSchema>;
