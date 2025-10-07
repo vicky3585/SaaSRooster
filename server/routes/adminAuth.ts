@@ -107,4 +107,61 @@ router.get("/me", async (req, res) => {
   }
 });
 
+// Change password
+const changePasswordSchema = z.object({
+  currentPassword: z.string().min(1, "Current password is required"),
+  newPassword: z.string().min(8, "New password must be at least 8 characters"),
+  confirmPassword: z.string().min(1, "Please confirm new password"),
+}).refine(data => data.newPassword === data.confirmPassword, {
+  message: "Passwords do not match",
+  path: ["confirmPassword"],
+});
+
+router.post("/change-password", async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      return res.status(401).json({ message: "Access token required" });
+    }
+
+    const token = authHeader.substring(7);
+    const decoded = jwt.verify(token, ADMIN_JWT_SECRET) as any;
+
+    if (!decoded.isAdmin || decoded.role !== "platform_admin") {
+      return res.status(403).json({ message: "Platform admin access required" });
+    }
+
+    const body = changePasswordSchema.parse(req.body);
+
+    const [user] = await db.select().from(users).where(eq(users.id, decoded.userId));
+    
+    if (!user || user.role !== "platform_admin") {
+      return res.status(403).json({ message: "Platform admin access required" });
+    }
+
+    // Verify current password
+    const isValidPassword = await bcrypt.compare(body.currentPassword, user.password);
+    if (!isValidPassword) {
+      return res.status(401).json({ message: "Current password is incorrect" });
+    }
+
+    // Hash new password
+    const hashedPassword = await bcrypt.hash(body.newPassword, 10);
+
+    // Update password
+    await db
+      .update(users)
+      .set({ password: hashedPassword, updatedAt: new Date() })
+      .where(eq(users.id, user.id));
+
+    res.json({ message: "Password changed successfully" });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({ message: "Validation error", errors: error.errors });
+    }
+    console.error("Change password error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
 export default router;
