@@ -1,8 +1,8 @@
-# Ledgix - Multi-Tenant SaaS Billing & Accounting Portal
+# Bizverse - Multi-Tenant SaaS Billing & Accounting Portal
 
 ## Overview
 
-Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and accounting portal for Indian businesses, ensuring GST compliance. It offers comprehensive financial management including invoicing, customer/vendor management, expense tracking, inventory, and GST reporting (GSTR-1, GSTR-3B). The application includes CRM, Support, and Accounting modules, with features like multi-GSTIN support, financial year management, AI-powered invoice email automation, and platform admin tools for user management.
+Bizverse is a production-ready, multi-tenant SaaS billing and accounting portal for Indian businesses, ensuring GST compliance. It offers comprehensive financial management including invoicing, customer/vendor management, expense tracking, inventory, and GST reporting (GSTR-1, GSTR-3B). The application includes CRM, Support, and Accounting modules, with features like multi-GSTIN support, financial year management, AI-powered invoice email automation, and platform admin tools for user management.
 
 ## Recent Changes
 

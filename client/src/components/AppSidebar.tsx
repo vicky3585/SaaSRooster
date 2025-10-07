@@ -92,8 +92,8 @@ export function AppSidebar() {
             <Building2 className="w-6 h-6 text-primary-foreground" />
           </div>
           <div className="flex-1">
-            <h2 className="text-lg font-bold text-sidebar-foreground">Ledgix</h2>
-            <p className="text-[10px] text-sidebar-foreground/60">Ledger + Logic</p>
+            <h2 className="text-lg font-bold text-sidebar-foreground">Bizverse</h2>
+            <p className="text-[10px] text-sidebar-foreground/60">Business Universe</p>
           </div>
         </div>
       </SidebarHeader>

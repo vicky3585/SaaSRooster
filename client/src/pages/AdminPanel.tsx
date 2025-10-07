@@ -96,7 +96,7 @@ export default function AdminPanel() {
       {/* Sidebar */}
       <aside className="w-64 border-r bg-card flex flex-col">
         <div className="p-6 border-b">
-          <h1 className="text-2xl font-bold text-primary">Ledgix Admin</h1>
+          <h1 className="text-2xl font-bold text-primary">Bizverse Admin</h1>
           <p className="text-sm text-muted-foreground mt-1">
             Platform Administration
           </p>
