@@ -1171,7 +1171,6 @@ export const insertItemSchema = createInsertSchema(items).omit({
   id: true,
   createdAt: true,
   updatedAt: true,
-  stockQuantity: true,
 }).extend({
   defaultWarehouseId: z.string().optional().transform(val => val === "" ? undefined : val),
 });
