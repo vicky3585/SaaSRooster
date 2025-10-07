@@ -8,6 +8,7 @@ Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and acc
 
 **Key Features:**
 - Multi-tenant architecture with organization-based isolation
+- **CRM Module:** Lead management with status tracking, deal pipeline with stage progression, activity timeline (calls, emails, meetings), and task management with priorities
 - GST-compliant invoicing and reporting (GSTR-1, GSTR-3B)
 - Customer and vendor management with GSTIN validation
 - Inventory management with stock tracking
@@ -92,6 +93,10 @@ Preferred communication style: Simple, everyday language.
 
 **Business Domain Tables:**
 - `customers` - Customer records with billing/shipping addresses and GST details
+- `leads` - CRM leads with status tracking, source attribution, and estimated value
+- `deals` - Sales pipeline deals with stage progression and value tracking
+- `activities` - CRM activity timeline (calls, emails, meetings) linked to leads/deals
+- `tasks` - Task management with priorities, due dates, and completion tracking
 - `items` - Products/services with pricing, HSN/SAC codes, and tax rates
 - `warehouses` - Inventory locations for multi-warehouse support
 - `invoices` - Invoice headers with customer, dates, and totals
