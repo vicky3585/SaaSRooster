@@ -6,6 +6,15 @@ Bizverse is a production-ready, multi-tenant SaaS billing and accounting portal 
 
 ## Recent Changes
 
+### Editable Invoice Numbers (October 2025)
+- **Custom Invoice Numbers**: Invoice numbers are now fully editable during invoice creation
+  - Auto-populated with next sequential number (e.g., "INV-2024-001")
+  - Users can override with custom invoice numbers
+  - Monospace font input for better readability
+  - Backend accepts `invoiceNumber` in request body with auto-generation fallback
+  - Form validation ensures invoice number is required
+  - Supports both create and edit modes
+
 ### Indian State Selection & Intelligent GST Calculation (October 2025)
 - **Place of Supply with State Codes**: Invoice creation now shows all Indian states with GST state codes
   - Dropdown format: "Code - State Name" (e.g., "29 - Karnataka", "27 - Maharashtra")
