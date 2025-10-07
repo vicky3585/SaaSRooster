@@ -178,6 +178,9 @@ export const paymentStatusEnum = pgEnum("payment_status", [
 export const paymentMethodEnum = pgEnum("payment_method", [
   "razorpay",
   "stripe",
+  "payumoney",
+  "paytm",
+  "ccavenue",
   "manual",
 ]);
 
@@ -395,6 +398,50 @@ export const platformSettings = pgTable("platform_settings", {
   description: text("description"),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
+
+// Payment Gateway Configurations (per organization)
+export const paymentGatewayConfigs = pgTable(
+  "payment_gateway_configs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    gatewayName: text("gateway_name").notNull(), // razorpay, stripe, payumoney, paytm, ccavenue
+    displayName: text("display_name").notNull(),
+    isActive: boolean("is_active").default(false),
+    isDefault: boolean("is_default").default(false),
+    mode: text("mode").notNull().default("test"), // test or live
+    config: jsonb("config").$type<{
+      // For Razorpay
+      keyId?: string;
+      keySecret?: string;
+      // For Stripe
+      publishableKey?: string;
+      secretKey?: string;
+      // For PayUMoney
+      merchantKey?: string;
+      merchantSalt?: string;
+      // For Paytm
+      merchantId?: string;
+      merchantKey2?: string;
+      // For CCAvenue
+      merchantId2?: string;
+      accessCode?: string;
+      workingKey?: string;
+      // Common fields
+      webhookSecret?: string;
+      callbackUrl?: string;
+      [key: string]: any;
+    }>(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("payment_gateway_configs_org_id_idx").on(table.orgId),
+    orgGatewayUnique: unique("payment_gateway_configs_org_gateway_unique").on(table.orgId, table.gatewayName),
+  })
+);
 
 // Memberships (User-Org relationship with roles)
 export const memberships = pgTable(
@@ -1531,6 +1578,12 @@ export const insertPlatformSettingSchema = createInsertSchema(platformSettings).
   updatedAt: true,
 });
 
+export const insertPaymentGatewayConfigSchema = createInsertSchema(paymentGatewayConfigs).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 export const insertMembershipSchema = createInsertSchema(memberships).omit({
   id: true,
   createdAt: true,
@@ -1779,6 +1832,9 @@ export type InsertPaymentTransaction = z.infer<typeof insertPaymentTransactionSc
 
 export type PlatformSetting = typeof platformSettings.$inferSelect;
 export type InsertPlatformSetting = z.infer<typeof insertPlatformSettingSchema>;
+
+export type PaymentGatewayConfig = typeof paymentGatewayConfigs.$inferSelect;
+export type InsertPaymentGatewayConfig = z.infer<typeof insertPaymentGatewayConfigSchema>;
 
 export type Membership = typeof memberships.$inferSelect;
 export type InsertMembership = z.infer<typeof insertMembershipSchema>;

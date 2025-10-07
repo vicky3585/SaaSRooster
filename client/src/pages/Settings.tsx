@@ -25,6 +25,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import PaymentGateways from "@/components/settings/PaymentGateways";
 
 type Organization = {
   id: string;
@@ -714,6 +715,7 @@ export default function Settings() {
           <TabsTrigger value="financial-years" data-testid="tab-financial-years">Financial Years</TabsTrigger>
           <TabsTrigger value="users" data-testid="tab-users">Users</TabsTrigger>
           <TabsTrigger value="billing" data-testid="tab-billing">Billing</TabsTrigger>
+          <TabsTrigger value="payment-gateways" data-testid="tab-payment-gateways">Payment Gateways</TabsTrigger>
           <TabsTrigger value="preferences" data-testid="tab-preferences">Preferences</TabsTrigger>
         </TabsList>
 
@@ -946,6 +948,12 @@ export default function Settings() {
                 <Button data-testid="button-upgrade-plan">Upgrade Plan</Button>
               </div>
             </div>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="payment-gateways">
+          <Card className="p-6">
+            <PaymentGateways />
           </Card>
         </TabsContent>
 
