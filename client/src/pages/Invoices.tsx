@@ -351,11 +351,12 @@ export default function Invoices() {
 
   const handleDownloadPDF = async (invoice: Invoice) => {
     try {
+      const accessToken = localStorage.getItem('accessToken');
       const response = await fetch(`/api/invoices/${invoice.id}/pdf`, {
         method: 'GET',
         credentials: 'include',
         headers: {
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
+          'Authorization': `Bearer ${accessToken}`,
         },
       });
 
