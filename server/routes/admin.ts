@@ -17,10 +17,12 @@ router.get("/organizations", async (req: any, res) => {
         id: organizations.id,
         name: organizations.name,
         gstin: organizations.gstin,
+        status: organizations.status,
+        subscriptionStatus: organizations.subscriptionStatus,
+        trialEndsAt: organizations.trialEndsAt,
         createdAt: organizations.createdAt,
       })
-      .from(organizations)
-      .where(eq(organizations.isActive, true));
+      .from(organizations);
 
     // Get member counts for each organization
     const orgsWithCounts = await Promise.all(
@@ -44,7 +46,7 @@ router.get("/organizations", async (req: any, res) => {
   }
 });
 
-// Soft-delete an organization (marks as inactive instead of hard delete)
+// Soft-delete an organization (marks as deleted)
 router.delete("/organizations/:id", async (req: any, res) => {
   try {
     const orgId = req.params.id;
@@ -57,10 +59,11 @@ router.delete("/organizations/:id", async (req: any, res) => {
       return res.status(404).json({ message: "Organization not found" });
     }
     
-    // Soft delete - mark as inactive
+    // Soft delete - mark status as deleted
     await db
       .update(organizations)
       .set({
+        status: "deleted",
         isActive: false,
         deletedAt: new Date(),
         updatedAt: new Date(),
@@ -77,21 +80,22 @@ router.delete("/organizations/:id", async (req: any, res) => {
       changes: {
         organizationName: org.name,
         organizationSlug: org.slug,
+        status: "deleted",
         deletedAt: new Date().toISOString(),
       },
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
     
-    res.json({ message: "Organization deactivated successfully" });
+    res.json({ message: "Organization deleted successfully" });
   } catch (error) {
     console.error("Soft delete organization error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });
 
-// Restore a soft-deleted organization
-router.post("/organizations/:id/restore", async (req: any, res) => {
+// Disable an organization
+router.post("/organizations/:id/disable", async (req: any, res) => {
   try {
     const orgId = req.params.id;
     const adminId = req.admin.userId;
@@ -102,10 +106,56 @@ router.post("/organizations/:id/restore", async (req: any, res) => {
       return res.status(404).json({ message: "Organization not found" });
     }
     
-    // Restore organization
+    // Disable organization
     await db
       .update(organizations)
       .set({
+        status: "disabled",
+        isActive: false,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, orgId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null,
+      action: "disable_organization",
+      entityType: "organization",
+      entityId: orgId,
+      changes: {
+        organizationName: org.name,
+        status: "disabled",
+        disabledAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ message: "Organization disabled successfully" });
+  } catch (error) {
+    console.error("Disable organization error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Enable an organization
+router.post("/organizations/:id/enable", async (req: any, res) => {
+  try {
+    const orgId = req.params.id;
+    const adminId = req.admin.userId;
+    
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+    
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+    
+    // Enable organization
+    await db
+      .update(organizations)
+      .set({
+        status: "active",
         isActive: true,
         deletedAt: null,
         updatedAt: new Date(),
@@ -116,20 +166,21 @@ router.post("/organizations/:id/restore", async (req: any, res) => {
     await db.insert(auditLogs).values({
       userId: adminId,
       orgId: null,
-      action: "restore_organization",
+      action: "enable_organization",
       entityType: "organization",
       entityId: orgId,
       changes: {
         organizationName: org.name,
-        restoredAt: new Date().toISOString(),
+        status: "active",
+        enabledAt: new Date().toISOString(),
       },
       ipAddress: req.ip,
       userAgent: req.headers["user-agent"],
     });
     
-    res.json({ message: "Organization restored successfully" });
+    res.json({ message: "Organization enabled successfully" });
   } catch (error) {
-    console.error("Restore organization error:", error);
+    console.error("Enable organization error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

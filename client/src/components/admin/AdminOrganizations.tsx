@@ -22,7 +22,7 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
-import { Search, Trash2, RotateCcw } from "lucide-react";
+import { Search, Trash2, Ban, CheckCircle } from "lucide-react";
 
 export default function AdminOrganizations() {
   const [searchQuery, setSearchQuery] = useState("");
@@ -57,15 +57,42 @@ export default function AdminOrganizations() {
     },
   });
 
-  const restoreOrgMutation = useMutation({
+  const disableOrgMutation = useMutation({
     mutationFn: async (orgId: string) => {
-      await adminApiRequest("POST", `/api/admin/organizations/${orgId}/restore`);
+      await adminApiRequest("POST", `/api/admin/organizations/${orgId}/disable`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
       toast({
-        title: "Organization restored",
-        description: "The organization has been restored successfully",
+        title: "Organization disabled",
+        description: "The organization has been disabled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to disable organization",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const enableOrgMutation = useMutation({
+    mutationFn: async (orgId: string) => {
+      await adminApiRequest("POST", `/api/admin/organizations/${orgId}/enable`);
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
+      toast({
+        title: "Organization enabled",
+        description: "The organization has been enabled successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to enable organization",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
       });
     },
   });
@@ -86,6 +113,16 @@ export default function AdminOrganizations() {
       expired: "outline",
     };
     return <Badge variant={variants[status] || "outline"}>{status}</Badge>;
+  };
+
+  const getStatusBadge = (status: string) => {
+    const variants: Record<string, any> = {
+      active: { variant: "default", label: "Active" },
+      disabled: { variant: "secondary", label: "Disabled" },
+      deleted: { variant: "destructive", label: "Deleted" },
+    };
+    const config = variants[status] || { variant: "outline", label: status };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
   };
 
   return (
@@ -123,6 +160,7 @@ export default function AdminOrganizations() {
               <TableRow>
                 <TableHead>Organization</TableHead>
                 <TableHead>GSTIN</TableHead>
+                <TableHead>Status</TableHead>
                 <TableHead>Members</TableHead>
                 <TableHead>Subscription</TableHead>
                 <TableHead>Created</TableHead>
@@ -136,19 +174,60 @@ export default function AdminOrganizations() {
                   <TableCell>
                     {org.gstin ? <span className="font-mono text-sm">{org.gstin}</span> : "-"}
                   </TableCell>
+                  <TableCell>{getStatusBadge(org.status)}</TableCell>
                   <TableCell>{org.memberCount || 0}</TableCell>
                   <TableCell>{getSubscriptionBadge(org.subscriptionStatus)}</TableCell>
                   <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
                   <TableCell className="text-right">
-                    {org.deletedAt ? (
-                      <Button variant="ghost" size="icon" onClick={() => restoreOrgMutation.mutate(org.id)}>
-                        <RotateCcw className="w-4 h-4 text-green-500" />
-                      </Button>
-                    ) : (
-                      <Button variant="ghost" size="icon" onClick={() => { setSelectedOrg(org); setDeleteDialogOpen(true); }}>
-                        <Trash2 className="w-4 h-4 text-destructive" />
-                      </Button>
-                    )}
+                    <div className="flex justify-end gap-2">
+                      {org.status === "active" && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => disableOrgMutation.mutate(org.id)}
+                            data-testid={`button-disable-org-${org.id}`}
+                          >
+                            <Ban className="w-4 h-4 mr-1" />
+                            Disable
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => { setSelectedOrg(org); setDeleteDialogOpen(true); }}
+                            data-testid={`button-delete-org-${org.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1 text-destructive" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      {org.status === "disabled" && (
+                        <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => enableOrgMutation.mutate(org.id)}
+                            data-testid={`button-enable-org-${org.id}`}
+                          >
+                            <CheckCircle className="w-4 h-4 mr-1 text-green-500" />
+                            Enable
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => { setSelectedOrg(org); setDeleteDialogOpen(true); }}
+                            data-testid={`button-delete-org-${org.id}`}
+                          >
+                            <Trash2 className="w-4 h-4 mr-1 text-destructive" />
+                            Delete
+                          </Button>
+                        </>
+                      )}
+                      {org.status === "deleted" && (
+                        <Badge variant="outline" className="text-muted-foreground">No actions</Badge>
+                      )}
+                    </div>
                   </TableCell>
                 </TableRow>
               ))}
@@ -160,17 +239,31 @@ export default function AdminOrganizations() {
       <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
-            <DialogTitle>Soft Delete Organization</DialogTitle>
+            <DialogTitle>Delete Organization</DialogTitle>
           </DialogHeader>
           {selectedOrg && (
-            <p className="text-sm text-muted-foreground">
-              Are you sure you want to soft-delete <span className="font-semibold">{selectedOrg.name}</span>?
-            </p>
+            <div className="space-y-3">
+              <p className="text-sm text-muted-foreground">
+                Are you sure you want to delete <span className="font-semibold">{selectedOrg.name}</span>?
+              </p>
+              <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+                <p className="text-sm font-medium">This will:</p>
+                <ul className="text-sm text-muted-foreground space-y-1 ml-4 list-disc">
+                  <li>Prevent all users from logging in</li>
+                  <li>Mark the organization as deleted</li>
+                  <li>Allow the email to sign up again with a new trial</li>
+                </ul>
+              </div>
+            </div>
           )}
           <DialogFooter>
             <Button variant="outline" onClick={() => setDeleteDialogOpen(false)}>Cancel</Button>
-            <Button variant="destructive" onClick={() => selectedOrg && deleteOrgMutation.mutate(selectedOrg.id)}>
-              {deleteOrgMutation.isPending ? "Deleting..." : "Delete"}
+            <Button 
+              variant="destructive" 
+              onClick={() => selectedOrg && deleteOrgMutation.mutate(selectedOrg.id)}
+              data-testid="button-confirm-delete-org"
+            >
+              {deleteOrgMutation.isPending ? "Deleting..." : "Delete Organization"}
             </Button>
           </DialogFooter>
         </DialogContent>

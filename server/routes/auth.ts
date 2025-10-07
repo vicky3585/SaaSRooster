@@ -121,19 +121,42 @@ router.post("/signup", async (req, res) => {
     const body = signupSchema.parse(req.body);
 
     const existingUser = await storage.getUserByEmail(body.email);
+    
+    // Check if user exists with an active organization
     if (existingUser) {
-      return res.status(400).json({ message: "Email already registered" });
+      const memberships = await storage.getMembershipsByUserId(existingUser.id);
+      let hasActiveOrg = false;
+      
+      for (const membership of memberships) {
+        const org = await storage.getOrganizationById(membership.orgId);
+        if (org && (org.status === "active" || org.status === "disabled")) {
+          hasActiveOrg = true;
+          break;
+        }
+      }
+      
+      if (hasActiveOrg) {
+        return res.status(400).json({ 
+          message: "Email already registered. Please login or contact support." 
+        });
+      }
     }
 
     const hashedPassword = await bcrypt.hash(body.password, 10);
 
-    const user = await storage.createUser({
+    // Create new user or reuse existing
+    const user = existingUser || await storage.createUser({
       name: body.name,
       email: body.email,
       password: hashedPassword,
     });
 
-    // Set 20-day trial
+    // If reusing existing user, update password
+    if (existingUser) {
+      await storage.updateUser(user.id, { password: hashedPassword, name: body.name });
+    }
+
+    // Get trial duration from platform settings
     const trialDays = parseInt(process.env.TRIAL_DAYS || "20", 10);
     const trialStartedAt = new Date();
     const trialEndsAt = new Date(trialStartedAt.getTime() + trialDays * 24 * 60 * 60 * 1000);
@@ -145,6 +168,7 @@ router.post("/signup", async (req, res) => {
       trialEndsAt,
       subscriptionStatus: "trialing",
       planId: "starter",
+      status: "active",
     });
 
     await storage.createMembership({
@@ -219,7 +243,23 @@ router.post("/login", async (req, res) => {
       return res.status(403).json({ message: "No organization membership found" });
     }
 
-    const currentOrgId = memberships[0].orgId;
+    // Check if any organization is active
+    let activeOrg = null;
+    for (const membership of memberships) {
+      const org = await storage.getOrganizationById(membership.orgId);
+      if (org && org.status === "active") {
+        activeOrg = membership;
+        break;
+      }
+    }
+
+    if (!activeOrg) {
+      return res.status(403).json({ 
+        message: "Your organization has been disabled or deleted. Please contact support or sign up again." 
+      });
+    }
+
+    const currentOrgId = activeOrg.orgId;
 
     const payload = {
       userId: user.id,
