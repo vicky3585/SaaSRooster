@@ -111,15 +111,29 @@ export function generateInvoiceHTML(data: InvoiceData): string {
   <div class="totals">
     <div class="totals-row">
       <span>Subtotal:</span>
-      <span>₹${subtotal.toFixed(2)}</span>
+      <span>₹${Number(invoice.subtotal || 0).toFixed(2)}</span>
     </div>
+    ${Number(invoice.cgst || 0) > 0 ? `
     <div class="totals-row">
-      <span>Tax:</span>
-      <span>₹${taxAmount.toFixed(2)}</span>
+      <span>CGST:</span>
+      <span>₹${Number(invoice.cgst).toFixed(2)}</span>
     </div>
+    ` : ''}
+    ${Number(invoice.sgst || 0) > 0 ? `
+    <div class="totals-row">
+      <span>SGST:</span>
+      <span>₹${Number(invoice.sgst).toFixed(2)}</span>
+    </div>
+    ` : ''}
+    ${Number(invoice.igst || 0) > 0 ? `
+    <div class="totals-row">
+      <span>IGST:</span>
+      <span>₹${Number(invoice.igst).toFixed(2)}</span>
+    </div>
+    ` : ''}
     <div class="totals-row total">
       <span>Total:</span>
-      <span>₹${total.toFixed(2)}</span>
+      <span>₹${Number(invoice.total || 0).toFixed(2)}</span>
     </div>
   </div>
 
@@ -151,7 +165,18 @@ export async function generateInvoicePDF(data: InvoiceData): Promise<Buffer> {
       right: '20px',
       bottom: '20px',
       left: '20px',
-    }
+    },
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--disable-accelerated-2d-canvas',
+      '--no-first-run',
+      '--no-zygote',
+      '--single-process',
+      '--disable-gpu'
+    ],
+    headless: true
   };
 
   try {
