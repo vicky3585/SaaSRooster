@@ -1,0 +1,55 @@
+Upgrade my app Ledgix into a professional CRM + Billing + light Accounting suite with a clean UI—without using extra credits.
+
+Guardrails (mandatory):
+
+Local-only: no paid APIs/GPU, no background jobs; mock data ok.
+
+Batch work; avoid repeated installs/builds; show plan & diffs first; ask once before heavy runs.
+
+Stack & constraints:
+
+Keep Node.js/Express (API) + React/Vite (web) + MariaDB (primary) or PostgreSQL (fallback).
+
+Use TypeScript, Tailwind, ESLint/Prettier. Keep existing code and env files.
+
+Deliverables:
+
+Data & Migrations (multi-tenant by org_id): users, roles, teams, org_settings, accounts, contacts, leads, deals, deal_stages, activities, notes, attachments, products, price_books (optional), invoices, invoice_lines, taxes, payments, journals, journal_entries, ledgers, tickets, audit_logs. Add indexes for common filters. Provide seeds.
+
+Auth & RBAC: Email/password, JWT, roles = Owner/Admin/Manager/Agent/ReadOnly. Middleware to enforce tenant + role. Audit critical actions.
+
+CRM: Leads → convert to account/contact/deal, Deals Kanban with drag/drop + stage metrics, Activities/Tasks with due dates, Notes, Attachments, global search, list filters (owner, stage, status, date).
+
+Billing: Products/Services, Taxes/Discounts, Quotes → Invoices (series, status, due date, partial/overpayments), Recurring invoices, Payments, local PDF (html-to-pdf).
+
+Accounting (light): Chart of Accounts, auto-post journals from invoice/payment events, Ledger view, Trial Balance (read-only).
+
+Support (basic): Tickets (status, priority, assignee), comments, attachments.
+
+Reports & Dashboard: Sales funnel, MRR/ARR from invoices, Aging/Collections, Activity stats. Queries only; charts client-side.
+
+UI/UX (professional):
+
+Layout: left sidebar nav, top bar with global search & quick-add.
+
+Components: DataTable (server pagination/filter/sort), Kanban, modal forms, toasts, empty states, skeleton loaders, dark/light theme.
+
+Brand text: Ledgix (no external assets), neutral gray + indigo/teal.
+
+Quality/Ops: Central error handler (problem+json), pino/winston logs with req IDs, .env.example, Dockerfiles (api/web), docker-compose.local.yml (db+app), OpenAPI at /api/docs, minimal tests (services + API happy paths).
+
+Execution plan (credit-safe):
+
+Print a plan + file tree + schema/migration previews first; wait for my OK.
+
+Then generate code in batches, show diffs, run a single grouped build/test only when necessary.
+
+Acceptance:
+
+Local run via docker-compose -f docker-compose.local.yml up or pnpm dev (api & web).
+
+Flow works end-to-end: create org → invite user → add accounts/contacts → leads → deals (Kanban) → products → invoice (PDF) → payment → journals/ledger update → see reports.
+
+No console errors, fast lists, seeds load, migrations idempotent.
+
+Proceed now: show the implementation plan, proposed folder tree, and first migration files (no heavy run yet).
