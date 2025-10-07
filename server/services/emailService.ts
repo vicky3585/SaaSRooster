@@ -1,6 +1,7 @@
 import { Resend } from 'resend';
 import OpenAI from 'openai';
 import type { Invoice, InvoiceItem, Customer, Organization } from "../../shared/schema";
+import { generateInvoicePDF } from './pdfGenerator';
 
 const resend = new Resend(process.env.RESEND_API_KEY);
 const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
@@ -72,7 +73,7 @@ export async function sendInvoiceEmail(
   data: EmailInvoiceData,
   invoiceHTML: string
 ): Promise<{ success: boolean; messageId?: string; error?: string }> {
-  const { customer, organization } = data;
+  const { customer, organization, invoice } = data;
 
   if (!customer.email) {
     return { success: false, error: 'Customer email not found' };
@@ -81,7 +82,8 @@ export async function sendInvoiceEmail(
   try {
     const { subject, body } = await generateEmailContent(data);
 
-    const emailBody = `${body.replace(/\n/g, '<br>')}<br><br><hr><br>${invoiceHTML}`;
+    // Generate PDF attachment
+    const pdfBuffer = await generateInvoicePDF(data);
 
     // Using verified domain hugenetwork.in
     const fromEmail = 'invoices@hugenetwork.in';
@@ -95,8 +97,14 @@ export async function sendInvoiceEmail(
       from: `${fromName} <${fromEmail}>`,
       to: customer.email,
       subject: subject,
-      html: emailBody,
+      html: body.replace(/\n/g, '<br>'),
       replyTo: (isVerifiedDomain && organization.email) ? organization.email : undefined,
+      attachments: [
+        {
+          filename: `invoice-${invoice.invoiceNumber}.pdf`,
+          content: pdfBuffer.toString('base64'),
+        }
+      ],
     });
 
     if (result.error) {
