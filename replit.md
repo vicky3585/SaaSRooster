@@ -8,13 +8,26 @@ Ledgix (Ledger + Logic) is a production-ready, multi-tenant SaaS billing and acc
 
 **Key Features:**
 - Multi-tenant architecture with organization-based isolation
-- **CRM Module:** Lead management with status tracking, deal pipeline with stage progression, activity timeline (calls, emails, meetings), and task management with priorities
-- GST-compliant invoicing and reporting (GSTR-1, GSTR-3B)
-- Customer and vendor management with GSTIN validation
-- Inventory management with stock tracking
-- Payment tracking and accounts receivable aging
-- Credit/debit notes management
-- Comprehensive financial reports and analytics
+- **CRM Module:** 
+  - Lead management with status tracking and conversion workflows
+  - Account and Contact management with hierarchical relationships
+  - Deal pipeline with Kanban board visualization and stage progression
+  - Activity timeline (calls, emails, meetings) and task management
+- **Support Module:**
+  - Ticket management with status tracking (open, pending, resolved, closed)
+  - Priority-based assignment (low, normal, high, urgent)
+  - Customer and contact linking for support requests
+- **Accounting Module:**
+  - Chart of Accounts with account hierarchy and type management (asset, liability, revenue, expense, equity)
+  - Journal entries and ledger management
+  - Trial balance and financial statements
+- **Billing & Invoicing:**
+  - GST-compliant invoicing and reporting (GSTR-1, GSTR-3B)
+  - Customer and vendor management with GSTIN validation
+  - Payment tracking and accounts receivable aging
+  - Credit/debit notes management
+- **Global Search:** Command palette (⌘K) for quick navigation across all entities
+- **Inventory Management:** Stock tracking with warehouse support
 - Role-based access control (Owner, Admin, Accountant, Viewer)
 
 ## User Preferences
@@ -94,9 +107,13 @@ Preferred communication style: Simple, everyday language.
 **Business Domain Tables:**
 - `customers` - Customer records with billing/shipping addresses and GST details
 - `leads` - CRM leads with status tracking, source attribution, and estimated value
+- `accounts` - CRM account/company records with industry and revenue tracking
+- `contacts` - Contact persons linked to accounts with roles and communication details
 - `deals` - Sales pipeline deals with stage progression and value tracking
 - `activities` - CRM activity timeline (calls, emails, meetings) linked to leads/deals
 - `tasks` - Task management with priorities, due dates, and completion tracking
+- `tickets` - Support ticket system with status, priority, and assignment tracking
+- `ticket_comments` - Comments and updates on support tickets
 - `items` - Products/services with pricing, HSN/SAC codes, and tax rates
 - `warehouses` - Inventory locations for multi-warehouse support
 - `invoices` - Invoice headers with customer, dates, and totals
@@ -105,6 +122,9 @@ Preferred communication style: Simple, everyday language.
 - `credit_notes` - Credit/debit notes for returns and adjustments
 - `expenses` - Expense tracking with categorization
 - `stock_transactions` - Inventory movement history (purchase, sale, adjustment, GRN)
+- `chart_of_accounts` - Accounting structure with account codes, types, and hierarchy
+- `journals` - Journal entry headers for double-entry bookkeeping
+- `journal_entries` - Journal entry line items (debits and credits)
 - `sequence_counters` - Auto-incrementing invoice/document numbers per organization
 
 **Key Design Decisions:**
