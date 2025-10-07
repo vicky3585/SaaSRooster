@@ -49,6 +49,47 @@ export const creditNoteTypeEnum = pgEnum("credit_note_type", [
   "debit",
 ]);
 
+export const leadStatusEnum = pgEnum("lead_status", [
+  "new",
+  "contacted",
+  "qualified",
+  "proposal",
+  "negotiation",
+  "won",
+  "lost",
+]);
+
+export const dealStageEnum = pgEnum("deal_stage", [
+  "prospecting",
+  "qualification",
+  "proposal",
+  "negotiation",
+  "closed_won",
+  "closed_lost",
+]);
+
+export const activityTypeEnum = pgEnum("activity_type", [
+  "call",
+  "email",
+  "meeting",
+  "note",
+  "task",
+]);
+
+export const taskPriorityEnum = pgEnum("task_priority", [
+  "low",
+  "medium",
+  "high",
+  "urgent",
+]);
+
+export const taskStatusEnum = pgEnum("task_status", [
+  "pending",
+  "in_progress",
+  "completed",
+  "cancelled",
+]);
+
 // Organizations
 export const organizations = pgTable("organizations", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
@@ -482,6 +523,123 @@ export const auditLogs = pgTable(
   })
 );
 
+// CRM - Leads
+export const leads = pgTable(
+  "leads",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    email: text("email"),
+    phone: text("phone"),
+    company: text("company"),
+    jobTitle: text("job_title"),
+    status: leadStatusEnum("status").notNull().default("new"),
+    source: text("source"), // "website", "referral", "cold_call", etc.
+    assignedTo: varchar("assigned_to").references(() => users.id),
+    estimatedValue: decimal("estimated_value", { precision: 12, scale: 2 }),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("leads_org_id_idx").on(table.orgId),
+    statusIdx: index("leads_status_idx").on(table.status),
+    assignedToIdx: index("leads_assigned_to_idx").on(table.assignedTo),
+  })
+);
+
+// CRM - Deals/Opportunities
+export const deals = pgTable(
+  "deals",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    customerId: varchar("customer_id").references(() => customers.id, { onDelete: "set null" }),
+    leadId: varchar("lead_id").references(() => leads.id, { onDelete: "set null" }),
+    stage: dealStageEnum("stage").notNull().default("prospecting"),
+    value: decimal("value", { precision: 12, scale: 2 }).notNull(),
+    probability: integer("probability").default(50), // 0-100%
+    expectedCloseDate: timestamp("expected_close_date"),
+    closedDate: timestamp("closed_date"),
+    assignedTo: varchar("assigned_to").references(() => users.id),
+    notes: text("notes"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("deals_org_id_idx").on(table.orgId),
+    stageIdx: index("deals_stage_idx").on(table.stage),
+    customerIdIdx: index("deals_customer_id_idx").on(table.customerId),
+    assignedToIdx: index("deals_assigned_to_idx").on(table.assignedTo),
+  })
+);
+
+// CRM - Activities
+export const activities = pgTable(
+  "activities",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    type: activityTypeEnum("type").notNull(),
+    subject: text("subject").notNull(),
+    description: text("description"),
+    leadId: varchar("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+    dealId: varchar("deal_id").references(() => deals.id, { onDelete: "cascade" }),
+    customerId: varchar("customer_id").references(() => customers.id, { onDelete: "cascade" }),
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id),
+    activityDate: timestamp("activity_date").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("activities_org_id_idx").on(table.orgId),
+    leadIdIdx: index("activities_lead_id_idx").on(table.leadId),
+    dealIdIdx: index("activities_deal_id_idx").on(table.dealId),
+    customerIdIdx: index("activities_customer_id_idx").on(table.customerId),
+  })
+);
+
+// CRM - Tasks
+export const tasks = pgTable(
+  "tasks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    title: text("title").notNull(),
+    description: text("description"),
+    status: taskStatusEnum("status").notNull().default("pending"),
+    priority: taskPriorityEnum("priority").notNull().default("medium"),
+    dueDate: timestamp("due_date"),
+    assignedTo: varchar("assigned_to").references(() => users.id),
+    leadId: varchar("lead_id").references(() => leads.id, { onDelete: "cascade" }),
+    dealId: varchar("deal_id").references(() => deals.id, { onDelete: "cascade" }),
+    customerId: varchar("customer_id").references(() => customers.id, { onDelete: "cascade" }),
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id),
+    completedAt: timestamp("completed_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("tasks_org_id_idx").on(table.orgId),
+    statusIdx: index("tasks_status_idx").on(table.status),
+    assignedToIdx: index("tasks_assigned_to_idx").on(table.assignedTo),
+    dueDateIdx: index("tasks_due_date_idx").on(table.dueDate),
+  })
+);
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   memberships: many(memberships),
@@ -493,6 +651,10 @@ export const organizationsRelations = relations(organizations, ({ many }) => ({
   expenses: many(expenses),
   subscriptions: many(subscriptions),
   auditLogs: many(auditLogs),
+  leads: many(leads),
+  deals: many(deals),
+  activities: many(activities),
+  tasks: many(tasks),
 }));
 
 export const usersRelations = relations(users, ({ many }) => ({
@@ -682,6 +844,30 @@ export const insertAuditLogSchema = createInsertSchema(auditLogs).omit({
   createdAt: true,
 });
 
+export const insertLeadSchema = createInsertSchema(leads).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertDealSchema = createInsertSchema(deals).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertActivitySchema = createInsertSchema(activities).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTaskSchema = createInsertSchema(tasks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  completedAt: true,
+});
+
 // Select Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -727,3 +913,15 @@ export type AuditLog = typeof auditLogs.$inferSelect;
 export type InsertAuditLog = z.infer<typeof insertAuditLogSchema>;
 
 export type SequenceCounter = typeof sequenceCounters.$inferSelect;
+
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = z.infer<typeof insertLeadSchema>;
+
+export type Deal = typeof deals.$inferSelect;
+export type InsertDeal = z.infer<typeof insertDealSchema>;
+
+export type Activity = typeof activities.$inferSelect;
+export type InsertActivity = z.infer<typeof insertActivitySchema>;
+
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = z.infer<typeof insertTaskSchema>;
