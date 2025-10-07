@@ -33,10 +33,12 @@ import financialYearsRoutes from "./routes/financialYears";
 import vendorsRoutes from "./routes/vendors";
 import priceListsRoutes from "./routes/priceLists";
 import aiRoutes from "./routes/ai";
+import dashboardRoutes from "./routes/dashboard";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
   
+  app.use("/api/dashboard", dashboardRoutes);
   app.use("/api/auth", authRoutes);
   app.use("/api/users", usersRoutes);
   app.use("/api/customers", customersRoutes);

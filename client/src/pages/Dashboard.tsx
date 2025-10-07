@@ -52,6 +52,22 @@ export default function Dashboard() {
     refetchInterval: 30000, // Refresh every 30 seconds
   });
 
+  // Fetch revenue chart data
+  const { data: revenueData = [] } = useQuery<Array<{ date: string; amount: number }>>({
+    queryKey: [`/api/dashboard/revenue-chart?days=${chartPeriod}`],
+    enabled: !!chartPeriod,
+  });
+
+  // Fetch invoice distribution
+  const { data: invoiceDistribution = [] } = useQuery<Array<{ status: string; value: number; fill: string }>>({
+    queryKey: ["/api/dashboard/invoice-distribution"],
+  });
+
+  // Fetch recent activities
+  const { data: recentActivities = [] } = useQuery<Array<{ type: string; description: string; time: string; status: string }>>({
+    queryKey: ["/api/dashboard/recent-activities"],
+  });
+
   const vitalStats: VitalStat[] = [
     {
       title: "Amount Outstanding",
@@ -91,22 +107,28 @@ export default function Dashboard() {
 
   const quickActions = [
     {
+      label: "New Invoice",
+      icon: Receipt,
+      color: "bg-blue-500 hover:bg-blue-600",
+      onClick: () => setLocation("/invoices"),
+    },
+    {
       label: "Add Purchase",
       icon: ShoppingCart,
-      color: "bg-blue-500 hover:bg-blue-600",
-      onClick: () => setLocation("/inventory"),
+      color: "bg-purple-500 hover:bg-purple-600",
+      onClick: () => setLocation("/purchase-orders"),
     },
     {
       label: "Add Expense",
       icon: TrendingUp,
-      color: "bg-blue-500 hover:bg-blue-600",
+      color: "bg-orange-500 hover:bg-orange-600",
       onClick: () => setLocation("/expenses"),
     },
     {
       label: "New Quotation",
       icon: FileCheck,
-      color: "bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600",
-      onClick: () => setLocation("/invoices"),
+      color: "bg-green-500 hover:bg-green-600",
+      onClick: () => setLocation("/quotations"),
     },
     {
       label: "Add Customer",
@@ -115,71 +137,10 @@ export default function Dashboard() {
       onClick: () => setLocation("/customers"),
     },
     {
-      label: "Add Reminder",
-      icon: Bell,
-      color: "bg-blue-500 hover:bg-blue-600",
-      onClick: () => {},
-    },
-    {
       label: "Payment In",
       icon: ArrowDownCircle,
-      color: "bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600",
+      color: "bg-emerald-500 hover:bg-emerald-600",
       onClick: () => setLocation("/invoices"),
-    },
-    {
-      label: "Payment Out",
-      icon: ArrowUpCircle,
-      color: "bg-gray-800 hover:bg-gray-900 dark:bg-gray-700 dark:hover:bg-gray-600",
-      onClick: () => setLocation("/expenses"),
-    },
-  ];
-
-  // Sample chart data - in real app this would come from API
-  const revenueData = [
-    { date: "18 Sep", amount: 3000 },
-    { date: "19 Sep", amount: 6000 },
-    { date: "20 Sep", amount: 9000 },
-    { date: "21 Sep", amount: 12000 },
-    { date: "22 Sep", amount: 15000 },
-    { date: "23 Sep", amount: 18000 },
-    { date: "24 Sep", amount: 21000 },
-    { date: "25 Sep", amount: 19000 },
-    { date: "26 Sep", amount: 17000 },
-    { date: "27 Sep", amount: 15000 },
-    { date: "28 Sep", amount: 12000 },
-    { date: "29 Sep", amount: 9000 },
-  ];
-
-  const invoiceDistribution = [
-    { status: "Paid", value: 450, fill: "hsl(var(--chart-1))" },
-    { status: "Overdue", value: 200, fill: "hsl(var(--chart-2))" },
-    { status: "Due", value: 150, fill: "hsl(var(--chart-3))" },
-  ];
-
-  const recentActivities = [
-    {
-      type: "Customer Due",
-      description: "₹21,000",
-      time: "All",
-      status: "overdue",
-    },
-    {
-      type: "Supplier Due",
-      description: "Amount Due",
-      time: "Last 30 days",
-      status: "pending",
-    },
-    {
-      type: "Amount Received",
-      description: "₹18,000",
-      time: "Last 30 days",
-      status: "success",
-    },
-    {
-      type: "Amount Paid",
-      description: "Payment processed",
-      time: "Last 30 days",
-      status: "success",
     },
   ];
 
