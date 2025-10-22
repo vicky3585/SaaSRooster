@@ -976,6 +976,19 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 
 ---
 
+## 🔧 Troubleshooting
+
+Encountering issues? Check out our comprehensive [Troubleshooting Guide](./TROUBLESHOOTING.md) for solutions to common problems:
+
+- **Rate Limiting Issues**: "Too many login attempts" errors
+- **Database Connection**: PostgreSQL connection problems
+- **Environment Variables**: Configuration issues
+- **Login Credentials**: Test user accounts
+
+For additional support, please contact [hugenetwork7@gmail.com](mailto:hugenetwork7@gmail.com)
+
+---
+
 <div align="center">
 
 **Made with ❤️ by Flying Venture System**

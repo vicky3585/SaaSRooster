@@ -21,10 +21,18 @@ export const rateLimiter = rateLimit({
 
 /**
  * Configure stricter rate limiting for authentication endpoints
+ * 
+ * DEVELOPMENT: 50 attempts per 15 minutes (more lenient for testing)
+ * PRODUCTION: 5 attempts per 15 minutes (strict security)
+ * 
+ * NOTE: This is an in-memory rate limiter. To clear rate limits:
+ * 1. Restart the application
+ * 2. Wait for the 15-minute window to expire
+ * 3. Use Redis for persistent rate limiting in production clusters
  */
 export const authRateLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, // 15 minutes
-  max: 5, // 5 login attempts per window
+  max: process.env.NODE_ENV === 'production' ? 5 : 50, // Development: 50 attempts, Production: 5 attempts
   message: {
     error: 'Too many login attempts, please try again after 15 minutes.',
     retryAfter: '15 minutes',
@@ -135,5 +143,5 @@ export function setupSecurity(app: Express) {
   console.log('✓ Security middleware configured');
   console.log(`  - Rate limit: ${process.env.RATE_LIMIT_MAX_REQUESTS || 100} requests per ${parseInt(process.env.RATE_LIMIT_WINDOW_MS || '900000') / 60000} minutes`);
   console.log(`  - CORS origins: ${process.env.CORS_ORIGINS || 'http://localhost:5000'}`);
-  console.log(`  - Auth rate limit: 5 attempts per 15 minutes`);
+  console.log(`  - Auth rate limit: ${process.env.NODE_ENV === 'production' ? '5' : '50'} attempts per 15 minutes (${process.env.NODE_ENV || 'development'} mode)`);
 }
