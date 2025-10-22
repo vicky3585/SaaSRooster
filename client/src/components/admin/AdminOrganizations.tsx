@@ -8,6 +8,9 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -22,12 +25,14 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { useToast } from "@/hooks/use-toast";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { Search, Trash2, Ban, CheckCircle, Users2, KeyRound } from "lucide-react";
+import { Search, Trash2, Ban, CheckCircle, Users2, KeyRound, CreditCard, CalendarIcon, Clock } from "lucide-react";
+import { format } from "date-fns";
 
 const resetPasswordSchema = z.object({
   newPassword: z.string().min(6, "Password must be at least 6 characters"),
@@ -37,13 +42,20 @@ const resetPasswordSchema = z.object({
   path: ["confirmPassword"],
 });
 
+const changePlanSchema = z.object({
+  planId: z.enum(["free", "basic", "pro", "enterprise"]),
+});
+
 export default function AdminOrganizations() {
   const [searchQuery, setSearchQuery] = useState("");
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [usersDialogOpen, setUsersDialogOpen] = useState(false);
   const [resetPasswordDialogOpen, setResetPasswordDialogOpen] = useState(false);
+  const [changePlanDialogOpen, setChangePlanDialogOpen] = useState(false);
+  const [extendValidityDialogOpen, setExtendValidityDialogOpen] = useState(false);
   const [selectedOrg, setSelectedOrg] = useState<any>(null);
   const [selectedUser, setSelectedUser] = useState<any>(null);
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>(undefined);
   const { toast } = useToast();
 
   const { data: organizations = [], isLoading } = useQuery({
@@ -62,6 +74,13 @@ export default function AdminOrganizations() {
     defaultValues: {
       newPassword: "",
       confirmPassword: "",
+    },
+  });
+
+  const changePlanForm = useForm({
+    resolver: zodResolver(changePlanSchema),
+    defaultValues: {
+      planId: "free" as const,
     },
   });
 
@@ -150,6 +169,52 @@ export default function AdminOrganizations() {
     },
   });
 
+  const changePlanMutation = useMutation({
+    mutationFn: async ({ orgId, planId }: { orgId: string; planId: string }) => {
+      await adminApiRequest("PATCH", `/api/admin/organizations/${orgId}/plan`, { planId });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
+      setChangePlanDialogOpen(false);
+      setSelectedOrg(null);
+      changePlanForm.reset();
+      toast({
+        title: "Plan changed",
+        description: "Organization subscription plan has been updated successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to change plan",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const extendValidityMutation = useMutation({
+    mutationFn: async ({ orgId, trialEndsAt }: { orgId: string; trialEndsAt: string }) => {
+      await adminApiRequest("PATCH", `/api/admin/organizations/${orgId}/validity`, { trialEndsAt });
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/organizations"] });
+      setExtendValidityDialogOpen(false);
+      setSelectedOrg(null);
+      setSelectedDate(undefined);
+      toast({
+        title: "Validity extended",
+        description: "Organization subscription validity has been extended successfully",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Failed to extend validity",
+        description: error.message || "Something went wrong",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleViewUsers = (org: any) => {
     setSelectedOrg(org);
     setUsersDialogOpen(true);
@@ -161,9 +226,34 @@ export default function AdminOrganizations() {
     setResetPasswordDialogOpen(true);
   };
 
+  const handleChangePlan = (org: any) => {
+    setSelectedOrg(org);
+    changePlanForm.setValue("planId", org.planId || "free");
+    setChangePlanDialogOpen(true);
+  };
+
+  const handleExtendValidity = (org: any) => {
+    setSelectedOrg(org);
+    setSelectedDate(org.trialEndsAt ? new Date(org.trialEndsAt) : new Date());
+    setExtendValidityDialogOpen(true);
+  };
+
   const onResetPasswordSubmit = (data: any) => {
     if (selectedUser) {
       resetPasswordMutation.mutate({ userId: selectedUser.userId, newPassword: data.newPassword });
+    }
+  };
+
+  const onChangePlanSubmit = (data: any) => {
+    if (selectedOrg) {
+      changePlanMutation.mutate({ orgId: selectedOrg.id, planId: data.planId });
+    }
+  };
+
+  const onExtendValiditySubmit = () => {
+    if (selectedOrg && selectedDate) {
+      const isoDate = selectedDate.toISOString();
+      extendValidityMutation.mutate({ orgId: selectedOrg.id, trialEndsAt: isoDate });
     }
   };
 
@@ -193,6 +283,29 @@ export default function AdminOrganizations() {
     };
     const config = variants[status] || { variant: "outline", label: status };
     return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const getPlanBadge = (planId: string) => {
+    const planConfig: Record<string, { variant: any; label: string }> = {
+      free: { variant: "outline", label: "Free" },
+      basic: { variant: "secondary", label: "Basic" },
+      pro: { variant: "default", label: "Pro" },
+      enterprise: { variant: "default", label: "Enterprise" },
+    };
+    const config = planConfig[planId] || { variant: "outline", label: planId };
+    return <Badge variant={config.variant}>{config.label}</Badge>;
+  };
+
+  const formatExpiryDate = (date: string | null) => {
+    if (!date) return "N/A";
+    const expiryDate = new Date(date);
+    const now = new Date();
+    const isExpired = expiryDate < now;
+    return (
+      <span className={isExpired ? "text-destructive font-medium" : ""}>
+        {format(expiryDate, "MMM dd, yyyy")}
+      </span>
+    );
   };
 
   return (
@@ -231,9 +344,10 @@ export default function AdminOrganizations() {
                 <TableHead>Organization</TableHead>
                 <TableHead>GSTIN</TableHead>
                 <TableHead>Status</TableHead>
-                <TableHead>Members</TableHead>
+                <TableHead>Plan</TableHead>
                 <TableHead>Subscription</TableHead>
-                <TableHead>Created</TableHead>
+                <TableHead>Expiry Date</TableHead>
+                <TableHead>Members</TableHead>
                 <TableHead className="text-right">Actions</TableHead>
               </TableRow>
             </TableHeader>
@@ -245,11 +359,12 @@ export default function AdminOrganizations() {
                     {org.gstin ? <span className="font-mono text-sm">{org.gstin}</span> : "-"}
                   </TableCell>
                   <TableCell>{getStatusBadge(org.status)}</TableCell>
-                  <TableCell>{org.memberCount || 0}</TableCell>
+                  <TableCell>{getPlanBadge(org.planId)}</TableCell>
                   <TableCell>{getSubscriptionBadge(org.subscriptionStatus)}</TableCell>
-                  <TableCell>{new Date(org.createdAt).toLocaleDateString()}</TableCell>
+                  <TableCell>{formatExpiryDate(org.trialEndsAt)}</TableCell>
+                  <TableCell>{org.memberCount || 0}</TableCell>
                   <TableCell className="text-right">
-                    <div className="flex justify-end gap-2">
+                    <div className="flex justify-end gap-2 flex-wrap">
                       <Button 
                         variant="ghost" 
                         size="sm" 
@@ -261,6 +376,24 @@ export default function AdminOrganizations() {
                       </Button>
                       {org.status === "active" && (
                         <>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleChangePlan(org)}
+                            data-testid={`button-change-plan-${org.id}`}
+                          >
+                            <CreditCard className="w-4 h-4 mr-1" />
+                            Change Plan
+                          </Button>
+                          <Button 
+                            variant="ghost" 
+                            size="sm" 
+                            onClick={() => handleExtendValidity(org)}
+                            data-testid={`button-extend-validity-${org.id}`}
+                          >
+                            <Clock className="w-4 h-4 mr-1" />
+                            Extend Validity
+                          </Button>
                           <Button 
                             variant="ghost" 
                             size="sm" 
@@ -496,6 +629,158 @@ export default function AdminOrganizations() {
                 </DialogFooter>
               </form>
             </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Plan Dialog */}
+      <Dialog open={changePlanDialogOpen} onOpenChange={(open) => {
+        setChangePlanDialogOpen(open);
+        if (!open) {
+          setSelectedOrg(null);
+          changePlanForm.reset();
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change Subscription Plan</DialogTitle>
+            <DialogDescription>
+              Change the subscription plan for this organization
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrg && (
+            <Form {...changePlanForm}>
+              <form onSubmit={changePlanForm.handleSubmit(onChangePlanSubmit)} className="space-y-4">
+                <div className="p-3 bg-muted rounded-lg">
+                  <p className="font-medium">{selectedOrg.name}</p>
+                  <p className="text-sm text-muted-foreground">
+                    Current Plan: {getPlanBadge(selectedOrg.planId)}
+                  </p>
+                </div>
+
+                <FormField
+                  control={changePlanForm.control}
+                  name="planId"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>New Plan</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger data-testid="select-new-plan">
+                            <SelectValue placeholder="Select a plan" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="free">Free</SelectItem>
+                          <SelectItem value="basic">Basic</SelectItem>
+                          <SelectItem value="pro">Professional</SelectItem>
+                          <SelectItem value="enterprise">Enterprise</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <DialogFooter>
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={() => {
+                      setChangePlanDialogOpen(false);
+                      setSelectedOrg(null);
+                      changePlanForm.reset();
+                    }}
+                    data-testid="button-cancel-change-plan"
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    type="submit"
+                    disabled={changePlanMutation.isPending}
+                    data-testid="button-confirm-change-plan"
+                  >
+                    {changePlanMutation.isPending ? "Updating..." : "Change Plan"}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Extend Validity Dialog */}
+      <Dialog open={extendValidityDialogOpen} onOpenChange={(open) => {
+        setExtendValidityDialogOpen(open);
+        if (!open) {
+          setSelectedOrg(null);
+          setSelectedDate(undefined);
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Extend Subscription Validity</DialogTitle>
+            <DialogDescription>
+              Set a new expiry date for this organization's subscription
+            </DialogDescription>
+          </DialogHeader>
+          {selectedOrg && (
+            <div className="space-y-4">
+              <div className="p-3 bg-muted rounded-lg">
+                <p className="font-medium">{selectedOrg.name}</p>
+                <p className="text-sm text-muted-foreground">
+                  Current Expiry: {formatExpiryDate(selectedOrg.trialEndsAt)}
+                </p>
+              </div>
+
+              <div className="space-y-2">
+                <label className="text-sm font-medium">New Expiry Date</label>
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className="w-full justify-start text-left font-normal"
+                      data-testid="button-select-date"
+                    >
+                      <CalendarIcon className="mr-2 h-4 w-4" />
+                      {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <Calendar
+                      mode="single"
+                      selected={selectedDate}
+                      onSelect={setSelectedDate}
+                      initialFocus
+                      disabled={(date) => date < new Date()}
+                    />
+                  </PopoverContent>
+                </Popover>
+              </div>
+
+              <DialogFooter>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => {
+                    setExtendValidityDialogOpen(false);
+                    setSelectedOrg(null);
+                    setSelectedDate(undefined);
+                  }}
+                  data-testid="button-cancel-extend-validity"
+                >
+                  Cancel
+                </Button>
+                <Button
+                  type="button"
+                  onClick={onExtendValiditySubmit}
+                  disabled={extendValidityMutation.isPending || !selectedDate}
+                  data-testid="button-confirm-extend-validity"
+                >
+                  {extendValidityMutation.isPending ? "Extending..." : "Extend Validity"}
+                </Button>
+              </DialogFooter>
+            </div>
           )}
         </DialogContent>
       </Dialog>
