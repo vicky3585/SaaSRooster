@@ -1,6 +1,54 @@
+# Dependencies
 node_modules
+npm-debug.log*
+
+# Environment files
+.env
+.env.local
+.env.*.local
+.env.production
+
+# Build outputs
 dist
-.DS_Store
+build
+.cache
 server/public
-vite.config.ts.*
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# Logs
+logs
+*.log
+
+# Uploads
+uploads/
+attached_assets/
+
+# Backups
+backups/
+*.backup
+*.sql
 *.tar.gz
+
+# Local config
+.local/
+.config/
+
+# Misc
+.replit
+login-state.png
+vite.config.ts.*
+
+# Docker volumes
+postgres_data/
+app_uploads/
+app_logs/

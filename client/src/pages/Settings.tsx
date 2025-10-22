@@ -49,6 +49,12 @@ type Organization = {
   } | null;
   fiscalYearStart: number;
   invoicePrefix: string;
+  planId: string;
+  subscriptionStatus: string;
+  trialStartedAt: string | null;
+  trialEndsAt: string | null;
+  subscriptionStartedAt?: string | null;
+  subscriptionEndsAt?: string | null;
 };
 
 type OrgGstin = {
@@ -886,68 +892,90 @@ export default function Settings() {
         <TabsContent value="billing">
           <Card className="p-6">
             <h3 className="text-xl font-semibold mb-4">Billing & Subscription</h3>
-            <div className="space-y-6">
-              <div>
-                <h4 className="font-medium mb-2">Current Plan</h4>
-                <div className="flex items-center justify-between p-4 border rounded-md">
+            {isLoading ? (
+              <div className="flex items-center justify-center p-8">
+                <Loader2 className="h-8 w-8 animate-spin" />
+              </div>
+            ) : (
+              <div className="space-y-6">
+                <div>
+                  <h4 className="font-medium mb-2">Current Plan</h4>
+                  <div className="flex items-center justify-between p-4 border rounded-md bg-muted/50">
+                    <div className="space-y-1">
+                      <div className="flex items-center gap-2">
+                        <p className="font-medium text-lg capitalize">
+                          {organization?.planId ? `${organization.planId.charAt(0).toUpperCase() + organization.planId.slice(1)} Plan` : 'Free Plan'}
+                        </p>
+                        {organization?.subscriptionStatus === 'trialing' && (
+                          <Badge variant="secondary">Trial</Badge>
+                        )}
+                        {organization?.subscriptionStatus === 'active' && (
+                          <Badge variant="default" className="bg-green-600">Active</Badge>
+                        )}
+                        {organization?.subscriptionStatus === 'expired' && (
+                          <Badge variant="destructive">Expired</Badge>
+                        )}
+                      </div>
+                      <p className="text-sm text-muted-foreground">
+                        {organization?.subscriptionStatus === 'trialing' 
+                          ? `Trial ${organization.trialEndsAt ? `ends ${new Date(organization.trialEndsAt).toLocaleDateString()}` : 'active'}`
+                          : organization?.subscriptionStatus === 'active'
+                          ? `Subscription ${organization.subscriptionEndsAt ? `renews ${new Date(organization.subscriptionEndsAt).toLocaleDateString()}` : 'active'}`
+                          : 'No active subscription'
+                        }
+                      </p>
+                    </div>
+                    {organization?.planId === 'free' && (
+                      <Link href="/subscription">
+                        <Button data-testid="button-upgrade-plan">Upgrade Plan</Button>
+                      </Link>
+                    )}
+                  </div>
+                </div>
+
+                {organization?.planId !== 'free' && organization?.subscriptionStatus !== 'trialing' && (
                   <div>
-                    <p className="font-medium">Professional Plan</p>
-                    <p className="text-sm text-muted-foreground">Unlimited invoices and users</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="text-2xl font-bold">₹999</p>
-                    <p className="text-sm text-muted-foreground">per month</p>
-                  </div>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Payment Method</h4>
-                <div className="flex items-center justify-between p-4 border rounded-md">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-8 bg-muted rounded flex items-center justify-center">
-                      <span className="text-xs font-bold">VISA</span>
-                    </div>
-                    <div>
-                      <p className="font-medium">•••• •••• •••• 4242</p>
-                      <p className="text-sm text-muted-foreground">Expires 12/25</p>
-                    </div>
-                  </div>
-                  <Button variant="outline" size="sm" data-testid="button-update-payment">
-                    Update
-                  </Button>
-                </div>
-              </div>
-
-              <div>
-                <h4 className="font-medium mb-2">Billing History</h4>
-                <div className="space-y-2">
-                  {[
-                    { date: "Jan 1, 2024", amount: "₹999", status: "Paid" },
-                    { date: "Dec 1, 2023", amount: "₹999", status: "Paid" },
-                    { date: "Nov 1, 2023", amount: "₹999", status: "Paid" },
-                  ].map((invoice, i) => (
-                    <div key={i} className="flex items-center justify-between p-3 border rounded-md" data-testid={`invoice-${i}`}>
-                      <div>
-                        <p className="font-medium">{invoice.date}</p>
-                        <p className="text-sm text-muted-foreground">{invoice.status}</p>
+                    <h4 className="font-medium mb-2">Subscription Details</h4>
+                    <div className="p-4 border rounded-md space-y-2">
+                      <div className="flex justify-between">
+                        <span className="text-sm text-muted-foreground">Status:</span>
+                        <span className="text-sm font-medium capitalize">{organization?.subscriptionStatus}</span>
                       </div>
-                      <div className="flex items-center gap-3">
-                        <p className="font-medium">{invoice.amount}</p>
-                        <Button variant="ghost" size="sm" data-testid={`button-download-invoice-${i}`}>
-                          Download
-                        </Button>
-                      </div>
+                      {organization?.subscriptionStartedAt && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Started:</span>
+                          <span className="text-sm font-medium">
+                            {new Date(organization.subscriptionStartedAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
+                      {organization?.subscriptionEndsAt && (
+                        <div className="flex justify-between">
+                          <span className="text-sm text-muted-foreground">Next Renewal:</span>
+                          <span className="text-sm font-medium">
+                            {new Date(organization.subscriptionEndsAt).toLocaleDateString()}
+                          </span>
+                        </div>
+                      )}
                     </div>
-                  ))}
+                  </div>
+                )}
+
+                <div className="flex justify-end gap-2">
+                  {organization?.planId === 'free' || organization?.subscriptionStatus === 'trialing' ? (
+                    <Link href="/subscription">
+                      <Button data-testid="button-upgrade-plan">View Plans & Upgrade</Button>
+                    </Link>
+                  ) : (
+                    <>
+                      <Link href="/subscription">
+                        <Button variant="outline" data-testid="button-change-plan">Change Plan</Button>
+                      </Link>
+                    </>
+                  )}
                 </div>
               </div>
-
-              <div className="flex justify-end gap-2">
-                <Button variant="outline" data-testid="button-cancel-subscription">Cancel Subscription</Button>
-                <Button data-testid="button-upgrade-plan">Upgrade Plan</Button>
-              </div>
-            </div>
+            )}
           </Card>
         </TabsContent>
 

@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import cookieParser from "cookie-parser";
+import healthRoutes from "./routes/health";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import customersRoutes from "./routes/customers";
@@ -47,6 +48,9 @@ import { authenticateToken } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
+  
+  // Health check (no auth required)
+  app.use("/api/health", healthRoutes);
   
   // Admin routes (no subscription check)
   app.use("/api/admin/auth", adminAuthRoutes);
