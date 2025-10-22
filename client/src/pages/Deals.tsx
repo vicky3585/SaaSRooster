@@ -80,8 +80,8 @@ export default function Deals() {
     resolver: zodResolver(dealFormSchema),
     defaultValues: {
       name: "",
-      customerId: "",
-      leadId: "",
+      customerId: undefined,
+      leadId: undefined,
       stage: "prospecting",
       value: "",
       probability: 50,
@@ -127,8 +127,8 @@ export default function Deals() {
     setEditingDeal(deal);
     form.reset({
       name: deal.name,
-      customerId: deal.customerId || "",
-      leadId: deal.leadId || "",
+      customerId: deal.customerId || undefined,
+      leadId: deal.leadId || undefined,
       stage: deal.stage,
       value: deal.value,
       probability: deal.probability,
@@ -222,7 +222,6 @@ export default function Deals() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
                             {customers.map((customer) => (
                               <SelectItem key={customer.id} value={customer.id}>
                                 {customer.name}
@@ -248,7 +247,6 @@ export default function Deals() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
                             {leads.map((lead) => (
                               <SelectItem key={lead.id} value={lead.id}>
                                 {lead.companyName || lead.contactName}
