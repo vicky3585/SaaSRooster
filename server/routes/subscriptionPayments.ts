@@ -256,11 +256,21 @@ router.post("/callback/success", async (req, res) => {
       .from(subscriptionPlans)
       .where(eq(subscriptionPlans.id, transaction.planId!));
 
+    // Map subscription plan names to planEnum values
+    const planNameMapping: Record<string, string> = {
+      'Free': 'free',
+      'Basic': 'basic',
+      'Pro': 'pro',
+      'Enterprise': 'enterprise',
+    };
+
+    const mappedPlanId = planDetails?.name ? planNameMapping[planDetails.name] || 'free' : 'free';
+
     await db
       .update(organizations)
       .set({
         subscriptionStatus: "active",
-        planId: planDetails?.name?.toLowerCase() || "starter",
+        planId: mappedPlanId,
         subscriptionStartedAt: new Date(),
         subscriptionEndsAt: subscriptionEndDate,
         updatedAt: new Date(),

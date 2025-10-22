@@ -1,8 +1,13 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupSecurity } from "./middleware/security";
 
 const app = express();
+
+// Security middleware (must be first)
+setupSecurity(app);
+
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
 
@@ -54,6 +59,23 @@ app.use((req, res, next) => {
     await setupVite(app, server);
   } else {
     serveStatic(app);
+  }
+
+  // Start scheduler service for automated notifications
+  if (process.env.NODE_ENV === "production" || process.env.ENABLE_SCHEDULER === "true") {
+    const { schedulerService } = await import("./services/schedulerService");
+    schedulerService.start();
+    log("Scheduler service started");
+    
+    // Graceful shutdown
+    process.on('SIGTERM', () => {
+      log('SIGTERM signal received: closing HTTP server');
+      schedulerService.stop();
+      server.close(() => {
+        log('HTTP server closed');
+        process.exit(0);
+      });
+    });
   }
 
   // ALWAYS serve the app on the port specified in the environment variable PORT

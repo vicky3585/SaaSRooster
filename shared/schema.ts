@@ -171,8 +171,9 @@ export const organizationStatusEnum = pgEnum("organization_status", [
 ]);
 
 export const planEnum = pgEnum("plan", [
-  "starter",
-  "professional",
+  "free",
+  "basic",
+  "pro",
   "enterprise",
 ]);
 
@@ -226,7 +227,7 @@ export const organizations = pgTable("organizations", {
   trialStartedAt: timestamp("trial_started_at"),
   trialEndsAt: timestamp("trial_ends_at"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trialing"),
-  planId: planEnum("plan_id").default("starter"),
+  planId: planEnum("plan_id").default("free"),
   status: organizationStatusEnum("status").default("active").notNull(),
   isActive: boolean("is_active").default(true),
   deletedAt: timestamp("deleted_at"),

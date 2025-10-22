@@ -69,7 +69,7 @@ router.post("/register", async (req, res) => {
       trialStartedAt,
       trialEndsAt,
       subscriptionStatus: "trialing",
-      planId: "starter",
+      planId: "free",
     });
 
     await storage.createMembership({
@@ -167,7 +167,7 @@ router.post("/signup", async (req, res) => {
       trialStartedAt,
       trialEndsAt,
       subscriptionStatus: "trialing",
-      planId: "starter",
+      planId: "free",
       status: "active",
     });
 
