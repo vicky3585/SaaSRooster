@@ -7,11 +7,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 import { Check, CreditCard, Loader2 } from "lucide-react";
 
 export default function SubscriptionPayment() {
   const [, setLocation] = useLocation();
   const { toast } = useToast();
+  const { user } = useAuth();
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   const [billingCycle, setBillingCycle] = useState<"monthly" | "quarterly" | "annual">("monthly");
   const [isProcessing, setIsProcessing] = useState(false);
@@ -33,16 +35,26 @@ export default function SubscriptionPayment() {
     const email = urlParams.get("email");
     const name = urlParams.get("name");
     
-    if (orgId) {
-      setCustomerInfo(prev => ({ ...prev, organizationId: orgId }));
+    // Prioritize authenticated user data, fall back to URL params
+    if (user) {
+      setCustomerInfo({
+        organizationId: user.currentOrgId || orgId || "",
+        email: user.email || email || "",
+        name: user.fullName || name || "",
+        phone: "",
+      });
+    } else {
+      if (orgId) {
+        setCustomerInfo(prev => ({ ...prev, organizationId: orgId }));
+      }
+      if (email) {
+        setCustomerInfo(prev => ({ ...prev, email }));
+      }
+      if (name) {
+        setCustomerInfo(prev => ({ ...prev, name }));
+      }
     }
-    if (email) {
-      setCustomerInfo(prev => ({ ...prev, email }));
-    }
-    if (name) {
-      setCustomerInfo(prev => ({ ...prev, name }));
-    }
-  }, []);
+  }, [user]);
 
   const handleSelectPlan = (plan: any) => {
     setSelectedPlan(plan);
