@@ -242,7 +242,6 @@ export default function ChartOfAccounts() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">None (Top Level)</SelectItem>
                           {accounts.filter(a => a.id !== editingAccount?.id).map((account) => (
                             <SelectItem key={account.id} value={account.id}>
                               {account.code} - {account.name}
