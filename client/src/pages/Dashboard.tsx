@@ -4,6 +4,7 @@ import { useLocation } from "wouter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 import { 
   DollarSign, 
   FileText, 
@@ -18,7 +19,9 @@ import {
   ArrowDownCircle,
   ArrowUpCircle,
   FileCheck,
-  RefreshCcw
+  RefreshCcw,
+  Calendar,
+  AlertTriangle
 } from "lucide-react";
 import {
   Area,
@@ -42,9 +45,22 @@ type VitalStat = {
   icon: any;
 };
 
+type Organization = {
+  id: string;
+  name: string;
+  trialEndsAt: string | null;
+  subscriptionStatus: "trialing" | "active" | "past_due" | "canceled" | "expired";
+  planId: "free" | "basic" | "pro" | "enterprise";
+};
+
 export default function Dashboard() {
   const [, setLocation] = useLocation();
   const [chartPeriod, setChartPeriod] = useState("30");
+
+  // Fetch current organization data
+  const { data: organization } = useQuery<Organization>({
+    queryKey: ["/api/organizations/current"],
+  });
 
   // Fetch dashboard stats
   const { data: stats } = useQuery({
@@ -144,6 +160,78 @@ export default function Dashboard() {
     },
   ];
 
+  // Helper function to get plan display name
+  const getPlanDisplayName = (planId: string) => {
+    const planNames: Record<string, string> = {
+      free: "Free Trial",
+      basic: "Basic Plan",
+      pro: "Professional Plan",
+      enterprise: "Enterprise Plan",
+    };
+    return planNames[planId] || "Subscription";
+  };
+
+  // Helper function to get subscription banner details
+  const getSubscriptionBannerDetails = () => {
+    if (!organization?.trialEndsAt) return null;
+
+    const expiryDate = new Date(organization.trialEndsAt);
+    const today = new Date();
+    const daysUntilExpiry = Math.ceil((expiryDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+    const formattedDate = format(expiryDate, "MMMM dd, yyyy");
+    const planName = getPlanDisplayName(organization.planId);
+    
+    const isExpired = daysUntilExpiry < 0;
+    const isExpiringSoon = daysUntilExpiry <= 7 && daysUntilExpiry >= 0;
+    
+    let variant: "default" | "destructive" = "default";
+    let icon = Calendar;
+    let message = "";
+    
+    if (organization.subscriptionStatus === "trialing") {
+      if (isExpired) {
+        variant = "destructive";
+        icon = AlertTriangle;
+        message = `Your ${planName} expired on ${formattedDate}. Please upgrade to continue using all features.`;
+      } else if (isExpiringSoon) {
+        variant = "destructive";
+        icon = AlertTriangle;
+        message = `${planName} ends in ${daysUntilExpiry} day${daysUntilExpiry !== 1 ? 's' : ''} on ${formattedDate}. Upgrade now to avoid interruption.`;
+      } else {
+        icon = Calendar;
+        message = `${planName} • Expires: ${formattedDate} (${daysUntilExpiry} days remaining)`;
+      }
+    } else if (organization.subscriptionStatus === "active") {
+      if (isExpired) {
+        variant = "destructive";
+        icon = AlertTriangle;
+        message = `Your ${planName} expired on ${formattedDate}. Please renew to continue.`;
+      } else if (isExpiringSoon) {
+        icon = AlertTriangle;
+        message = `${planName} • Renews: ${formattedDate} (${daysUntilExpiry} days remaining)`;
+      } else {
+        icon = Calendar;
+        message = `${planName} • Renews: ${formattedDate}`;
+      }
+    } else if (organization.subscriptionStatus === "expired") {
+      variant = "destructive";
+      icon = AlertTriangle;
+      message = `Your ${planName} expired on ${formattedDate}. Please renew to continue.`;
+    } else if (organization.subscriptionStatus === "canceled") {
+      variant = "destructive";
+      icon = AlertTriangle;
+      message = `${planName} was canceled. Access ends on ${formattedDate}.`;
+    } else if (organization.subscriptionStatus === "past_due") {
+      variant = "destructive";
+      icon = AlertTriangle;
+      message = `${planName} • Payment past due. Expires: ${formattedDate}. Please update your payment method.`;
+    }
+    
+    return { variant, icon, message };
+  };
+
+  const subscriptionBanner = getSubscriptionBannerDetails();
+
   return (
     <div className="p-6 space-y-6" data-testid="page-dashboard">
       {/* Header */}
@@ -159,6 +247,32 @@ export default function Dashboard() {
           Refresh
         </Button>
       </div>
+
+      {/* Subscription Expiry Banner */}
+      {subscriptionBanner && (
+        <Alert 
+          variant={subscriptionBanner.variant}
+          className="border-l-4 py-4"
+          data-testid="subscription-banner"
+        >
+          <subscriptionBanner.icon className="h-6 w-6" />
+          <AlertDescription className="ml-2 flex items-center justify-between">
+            <span className="font-semibold text-base">{subscriptionBanner.message}</span>
+            {(organization?.subscriptionStatus === "trialing" || 
+              organization?.subscriptionStatus === "expired" ||
+              organization?.subscriptionStatus === "past_due") && (
+              <Button 
+                size="sm" 
+                variant={subscriptionBanner.variant === "destructive" ? "secondary" : "default"}
+                onClick={() => setLocation("/settings/billing")}
+                className="ml-4"
+              >
+                Upgrade Now
+              </Button>
+            )}
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Vital Stats */}
       <div>

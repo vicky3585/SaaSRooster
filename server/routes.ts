@@ -1,6 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import cookieParser from "cookie-parser";
+import healthRoutes from "./routes/health";
 import authRoutes from "./routes/auth";
 import usersRoutes from "./routes/users";
 import customersRoutes from "./routes/customers";
@@ -42,11 +43,19 @@ import paymentGatewaysRoutes from "./routes/paymentGateways";
 import subscriptionPaymentsRoutes from "./routes/subscriptionPayments";
 import purchaseOrdersRoutes from "./routes/purchaseOrders";
 import purchaseInvoicesRoutes from "./routes/purchaseInvoices";
+import twoFactorRoutes from "./routes/twoFactor";
+import apiKeysRoutes from "./routes/apiKeys";
+import webhooksRoutes from "./routes/webhooks";
+import notificationsRoutes from "./routes/notifications";
+import filesRoutes from "./routes/files";
 import { requireActiveSubscription, checkTrialStatus } from "./middleware/subscription";
 import { authenticateToken } from "./middleware/auth";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   app.use(cookieParser());
+  
+  // Health check (no auth required)
+  app.use("/api/health", healthRoutes);
   
   // Admin routes (no subscription check)
   app.use("/api/admin/auth", adminAuthRoutes);
@@ -99,6 +108,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.use("/api/recurring-invoices", authenticateToken, requireActiveSubscription, recurringInvoicesRoutes);
   app.use("/api/search", authenticateToken, requireActiveSubscription, searchRoutes);
   app.use("/api/ai", authenticateToken, requireActiveSubscription, aiRoutes);
+  
+  // Advanced Features Routes
+  app.use("/api/2fa", authenticateToken, twoFactorRoutes);
+  app.use("/api/api-keys", authenticateToken, requireActiveSubscription, apiKeysRoutes);
+  app.use("/api/webhooks", authenticateToken, requireActiveSubscription, webhooksRoutes);
+  app.use("/api/notifications", authenticateToken, notificationsRoutes);
+  app.use("/api/files", authenticateToken, requireActiveSubscription, filesRoutes);
 
   const httpServer = createServer(app);
 

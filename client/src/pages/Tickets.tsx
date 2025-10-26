@@ -333,7 +333,6 @@ export default function Tickets() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
                             {customers.map((customer) => (
                               <SelectItem key={customer.id} value={customer.id}>
                                 {customer.name}
@@ -359,7 +358,6 @@ export default function Tickets() {
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            <SelectItem value="">None</SelectItem>
                             {contacts.map((contact) => (
                               <SelectItem key={contact.id} value={contact.id}>
                                 {contact.firstName} {contact.lastName}
@@ -386,7 +384,6 @@ export default function Tickets() {
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          <SelectItem value="">Unassigned</SelectItem>
                           {users.map((user) => (
                             <SelectItem key={user.id} value={user.id}>
                               {user.email}

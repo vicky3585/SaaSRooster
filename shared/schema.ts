@@ -171,8 +171,9 @@ export const organizationStatusEnum = pgEnum("organization_status", [
 ]);
 
 export const planEnum = pgEnum("plan", [
-  "starter",
-  "professional",
+  "free",
+  "basic",
+  "pro",
   "enterprise",
 ]);
 
@@ -226,7 +227,7 @@ export const organizations = pgTable("organizations", {
   trialStartedAt: timestamp("trial_started_at"),
   trialEndsAt: timestamp("trial_ends_at"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trialing"),
-  planId: planEnum("plan_id").default("starter"),
+  planId: planEnum("plan_id").default("free"),
   status: organizationStatusEnum("status").default("active").notNull(),
   isActive: boolean("is_active").default(true),
   deletedAt: timestamp("deleted_at"),
@@ -1568,6 +1569,452 @@ export const recurringInvoiceItems = pgTable(
   })
 );
 
+// ====================================
+// ADVANCED FEATURES - NEW TABLES
+// ====================================
+
+// Two-Factor Authentication
+export const twoFactorAuthEnum = pgEnum("two_factor_method", ["totp", "sms"]);
+
+export const twoFactorAuth = pgTable(
+  "two_factor_auth",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    enabled: boolean("enabled").default(false).notNull(),
+    method: twoFactorAuthEnum("method").default("totp"),
+    secret: text("secret"), // TOTP secret key (encrypted)
+    backupCodes: jsonb("backup_codes").$type<string[]>(), // Encrypted backup codes
+    lastUsedAt: timestamp("last_used_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("two_factor_auth_user_id_idx").on(table.userId),
+  })
+);
+
+// API Keys
+export const apiKeys = pgTable(
+  "api_keys",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    keyPrefix: text("key_prefix").notNull(), // First 8 chars for display (e.g., "bv_live_")
+    keyHash: text("key_hash").notNull().unique(), // Hashed API key
+    permissions: jsonb("permissions").$type<string[]>().default(sql`'[]'::jsonb`), // Array of permissions
+    lastUsedAt: timestamp("last_used_at"),
+    expiresAt: timestamp("expires_at"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    revokedAt: timestamp("revoked_at"),
+  },
+  (table) => ({
+    orgIdIdx: index("api_keys_org_id_idx").on(table.orgId),
+    userIdIdx: index("api_keys_user_id_idx").on(table.userId),
+    keyHashIdx: index("api_keys_key_hash_idx").on(table.keyHash),
+  })
+);
+
+// API Key Usage Tracking
+export const apiKeyUsage = pgTable(
+  "api_key_usage",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    apiKeyId: varchar("api_key_id")
+      .notNull()
+      .references(() => apiKeys.id, { onDelete: "cascade" }),
+    endpoint: text("endpoint").notNull(),
+    method: text("method").notNull(), // GET, POST, PUT, DELETE
+    statusCode: integer("status_code"),
+    responseTime: integer("response_time"), // milliseconds
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    apiKeyIdIdx: index("api_key_usage_api_key_id_idx").on(table.apiKeyId),
+    createdAtIdx: index("api_key_usage_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Webhooks
+export const webhookEventEnum = pgEnum("webhook_event", [
+  "invoice.created",
+  "invoice.updated",
+  "invoice.paid",
+  "customer.created",
+  "customer.updated",
+  "payment.received",
+  "subscription.updated",
+  "organization.updated",
+]);
+
+export const webhooks = pgTable(
+  "webhooks",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    url: text("url").notNull(),
+    events: jsonb("events").$type<string[]>().notNull(), // Array of webhook events
+    secret: text("secret").notNull(), // For HMAC signature
+    isActive: boolean("is_active").default(true).notNull(),
+    description: text("description"),
+    headers: jsonb("headers").$type<Record<string, string>>(), // Custom headers
+    retryCount: integer("retry_count").default(3),
+    lastTriggeredAt: timestamp("last_triggered_at"),
+    lastStatus: integer("last_status"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("webhooks_org_id_idx").on(table.orgId),
+  })
+);
+
+// Webhook Logs
+export const webhookStatusEnum = pgEnum("webhook_status", [
+  "pending",
+  "success",
+  "failed",
+  "retrying",
+]);
+
+export const webhookLogs = pgTable(
+  "webhook_logs",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    webhookId: varchar("webhook_id")
+      .notNull()
+      .references(() => webhooks.id, { onDelete: "cascade" }),
+    event: text("event").notNull(),
+    payload: jsonb("payload"),
+    status: webhookStatusEnum("status").notNull().default("pending"),
+    statusCode: integer("status_code"),
+    responseBody: text("response_body"),
+    errorMessage: text("error_message"),
+    attemptCount: integer("attempt_count").default(1),
+    nextRetryAt: timestamp("next_retry_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    webhookIdIdx: index("webhook_logs_webhook_id_idx").on(table.webhookId),
+    statusIdx: index("webhook_logs_status_idx").on(table.status),
+    createdAtIdx: index("webhook_logs_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Notifications
+export const notificationTypeEnum = pgEnum("notification_type", [
+  "info",
+  "success",
+  "warning",
+  "error",
+  "invoice",
+  "payment",
+  "subscription",
+  "team",
+  "system",
+]);
+
+export const notifications = pgTable(
+  "notifications",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    orgId: varchar("org_id").references(() => organizations.id, { onDelete: "cascade" }), // null for platform notifications
+    type: notificationTypeEnum("type").notNull().default("info"),
+    title: text("title").notNull(),
+    message: text("message").notNull(),
+    actionUrl: text("action_url"), // Link to related entity
+    actionLabel: text("action_label"), // Button text
+    isRead: boolean("is_read").default(false).notNull(),
+    readAt: timestamp("read_at"),
+    metadata: jsonb("metadata"), // Additional data
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("notifications_user_id_idx").on(table.userId),
+    orgIdIdx: index("notifications_org_id_idx").on(table.orgId),
+    isReadIdx: index("notifications_is_read_idx").on(table.isRead),
+    createdAtIdx: index("notifications_created_at_idx").on(table.createdAt),
+  })
+);
+
+// Notification Preferences
+export const notificationPreferences = pgTable(
+  "notification_preferences",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    emailNotifications: boolean("email_notifications").default(true),
+    inAppNotifications: boolean("in_app_notifications").default(true),
+    invoiceNotifications: boolean("invoice_notifications").default(true),
+    paymentNotifications: boolean("payment_notifications").default(true),
+    subscriptionNotifications: boolean("subscription_notifications").default(true),
+    teamNotifications: boolean("team_notifications").default(true),
+    marketingEmails: boolean("marketing_emails").default(false),
+    weeklyDigest: boolean("weekly_digest").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("notification_preferences_user_id_idx").on(table.userId),
+  })
+);
+
+// File Management
+export const fileTypeEnum = pgEnum("file_type", [
+  "image",
+  "document",
+  "spreadsheet",
+  "pdf",
+  "video",
+  "audio",
+  "archive",
+  "other",
+]);
+
+export const folders = pgTable(
+  "folders",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    name: text("name").notNull(),
+    parentFolderId: varchar("parent_folder_id").references(() => folders.id, { onDelete: "cascade" }),
+    path: text("path").notNull(), // Full path for easier queries
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("folders_org_id_idx").on(table.orgId),
+    parentFolderIdIdx: index("folders_parent_folder_id_idx").on(table.parentFolderId),
+    pathIdx: index("folders_path_idx").on(table.path),
+  })
+);
+
+export const files = pgTable(
+  "files",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    folderId: varchar("folder_id").references(() => folders.id, { onDelete: "set null" }),
+    name: text("name").notNull(),
+    originalName: text("original_name").notNull(),
+    fileType: fileTypeEnum("file_type").notNull(),
+    mimeType: text("mime_type").notNull(),
+    size: integer("size").notNull(), // in bytes
+    url: text("url").notNull(), // S3 or local storage URL
+    thumbnailUrl: text("thumbnail_url"), // For images/videos
+    description: text("description"),
+    uploadedBy: varchar("uploaded_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "set null" }),
+    isPublic: boolean("is_public").default(false),
+    metadata: jsonb("metadata"), // Dimensions, duration, etc.
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("files_org_id_idx").on(table.orgId),
+    folderIdIdx: index("files_folder_id_idx").on(table.folderId),
+    uploadedByIdx: index("files_uploaded_by_idx").on(table.uploadedBy),
+  })
+);
+
+// File Shares (for sharing files with team members)
+export const fileShares = pgTable(
+  "file_shares",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    fileId: varchar("file_id")
+      .notNull()
+      .references(() => files.id, { onDelete: "cascade" }),
+    sharedBy: varchar("shared_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sharedWith: varchar("shared_with")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    canEdit: boolean("can_edit").default(false),
+    canDelete: boolean("can_delete").default(false),
+    expiresAt: timestamp("expires_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    fileIdIdx: index("file_shares_file_id_idx").on(table.fileId),
+    sharedWithIdx: index("file_shares_shared_with_idx").on(table.sharedWith),
+  })
+);
+
+// Team Invitations
+export const invitationStatusEnum = pgEnum("invitation_status", [
+  "pending",
+  "accepted",
+  "rejected",
+  "expired",
+]);
+
+export const teamInvitations = pgTable(
+  "team_invitations",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    email: text("email").notNull(),
+    role: membershipRoleEnum("role").notNull().default("viewer"),
+    invitedBy: varchar("invited_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    status: invitationStatusEnum("status").notNull().default("pending"),
+    token: text("token").notNull().unique(), // Secure token for accepting invitation
+    expiresAt: timestamp("expires_at").notNull(),
+    acceptedAt: timestamp("accepted_at"),
+    rejectedAt: timestamp("rejected_at"),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("team_invitations_org_id_idx").on(table.orgId),
+    emailIdx: index("team_invitations_email_idx").on(table.email),
+    tokenIdx: index("team_invitations_token_idx").on(table.token),
+    statusIdx: index("team_invitations_status_idx").on(table.status),
+  })
+);
+
+// User Sessions (for active session management)
+export const userSessions = pgTable(
+  "user_sessions",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    sessionToken: text("session_token").notNull().unique(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    device: text("device"), // "Mobile", "Desktop", "Tablet"
+    browser: text("browser"),
+    os: text("os"),
+    location: text("location"), // City, Country
+    lastActivity: timestamp("last_activity").defaultNow().notNull(),
+    expiresAt: timestamp("expires_at").notNull(),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("user_sessions_user_id_idx").on(table.userId),
+    sessionTokenIdx: index("user_sessions_session_token_idx").on(table.sessionToken),
+    lastActivityIdx: index("user_sessions_last_activity_idx").on(table.lastActivity),
+  })
+);
+
+// Security Events
+export const securityEventTypeEnum = pgEnum("security_event_type", [
+  "login_success",
+  "login_failed",
+  "logout",
+  "password_changed",
+  "password_reset_requested",
+  "password_reset_completed",
+  "2fa_enabled",
+  "2fa_disabled",
+  "suspicious_activity",
+  "api_key_created",
+  "api_key_revoked",
+  "session_terminated",
+]);
+
+export const securityEvents = pgTable(
+  "security_events",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id").references(() => users.id, { onDelete: "cascade" }),
+    eventType: securityEventTypeEnum("event_type").notNull(),
+    ipAddress: text("ip_address"),
+    userAgent: text("user_agent"),
+    location: text("location"),
+    details: jsonb("details"), // Additional event details
+    severity: text("severity").default("info"), // info, warning, critical
+    wasSuccessful: boolean("was_successful").default(true),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("security_events_user_id_idx").on(table.userId),
+    eventTypeIdx: index("security_events_event_type_idx").on(table.eventType),
+    createdAtIdx: index("security_events_created_at_idx").on(table.createdAt),
+  })
+);
+
+// IP Whitelist
+export const ipWhitelist = pgTable(
+  "ip_whitelist",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    ipAddress: text("ip_address").notNull(),
+    description: text("description"),
+    isActive: boolean("is_active").default(true).notNull(),
+    createdBy: varchar("created_by")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" }),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    orgIdIdx: index("ip_whitelist_org_id_idx").on(table.orgId),
+    ipAddressIdx: index("ip_whitelist_ip_address_idx").on(table.ipAddress),
+  })
+);
+
+// Onboarding Progress
+export const onboardingProgress = pgTable(
+  "onboarding_progress",
+  {
+    id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+    userId: varchar("user_id")
+      .notNull()
+      .references(() => users.id, { onDelete: "cascade" })
+      .unique(),
+    orgId: varchar("org_id")
+      .notNull()
+      .references(() => organizations.id, { onDelete: "cascade" }),
+    currentStep: integer("current_step").default(1),
+    completedSteps: jsonb("completed_steps").$type<string[]>().default(sql`'[]'::jsonb`),
+    isCompleted: boolean("is_completed").default(false),
+    skipped: boolean("skipped").default(false),
+    createdAt: timestamp("created_at").defaultNow().notNull(),
+    updatedAt: timestamp("updated_at").defaultNow().notNull(),
+  },
+  (table) => ({
+    userIdIdx: index("onboarding_progress_user_id_idx").on(table.userId),
+    orgIdIdx: index("onboarding_progress_org_id_idx").on(table.orgId),
+  })
+);
+
 // Relations
 export const organizationsRelations = relations(organizations, ({ many }) => ({
   memberships: many(memberships),
@@ -1985,6 +2432,96 @@ export const insertPurchaseInvoiceItemSchema = createInsertSchema(purchaseInvoic
   id: true,
 });
 
+// Advanced Features Insert Schemas
+export const insertTwoFactorAuthSchema = createInsertSchema(twoFactorAuth).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertApiKeySchema = createInsertSchema(apiKeys).omit({
+  id: true,
+  createdAt: true,
+  revokedAt: true,
+  lastUsedAt: true,
+});
+
+export const insertApiKeyUsageSchema = createInsertSchema(apiKeyUsage).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertWebhookSchema = createInsertSchema(webhooks).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+  lastTriggeredAt: true,
+  lastStatus: true,
+});
+
+export const insertWebhookLogSchema = createInsertSchema(webhookLogs).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertNotificationSchema = createInsertSchema(notifications).omit({
+  id: true,
+  createdAt: true,
+  readAt: true,
+});
+
+export const insertNotificationPreferencesSchema = createInsertSchema(notificationPreferences).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFolderSchema = createInsertSchema(folders).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFileSchema = createInsertSchema(files).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export const insertFileShareSchema = createInsertSchema(fileShares).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertTeamInvitationSchema = createInsertSchema(teamInvitations).omit({
+  id: true,
+  createdAt: true,
+  acceptedAt: true,
+  rejectedAt: true,
+});
+
+export const insertUserSessionSchema = createInsertSchema(userSessions).omit({
+  id: true,
+  createdAt: true,
+  lastActivity: true,
+});
+
+export const insertSecurityEventSchema = createInsertSchema(securityEvents).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertIpWhitelistSchema = createInsertSchema(ipWhitelist).omit({
+  id: true,
+  createdAt: true,
+});
+
+export const insertOnboardingProgressSchema = createInsertSchema(onboardingProgress).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
 // Select Types
 export type Organization = typeof organizations.$inferSelect;
 export type InsertOrganization = z.infer<typeof insertOrganizationSchema>;
@@ -2135,3 +2672,49 @@ export type InsertPurchaseInvoice = z.infer<typeof insertPurchaseInvoiceSchema>;
 
 export type PurchaseInvoiceItem = typeof purchaseInvoiceItems.$inferSelect;
 export type InsertPurchaseInvoiceItem = z.infer<typeof insertPurchaseInvoiceItemSchema>;
+
+// Advanced Features Types
+export type TwoFactorAuth = typeof twoFactorAuth.$inferSelect;
+export type InsertTwoFactorAuth = z.infer<typeof insertTwoFactorAuthSchema>;
+
+export type ApiKey = typeof apiKeys.$inferSelect;
+export type InsertApiKey = z.infer<typeof insertApiKeySchema>;
+
+export type ApiKeyUsage = typeof apiKeyUsage.$inferSelect;
+export type InsertApiKeyUsage = z.infer<typeof insertApiKeyUsageSchema>;
+
+export type Webhook = typeof webhooks.$inferSelect;
+export type InsertWebhook = z.infer<typeof insertWebhookSchema>;
+
+export type WebhookLog = typeof webhookLogs.$inferSelect;
+export type InsertWebhookLog = z.infer<typeof insertWebhookLogSchema>;
+
+export type Notification = typeof notifications.$inferSelect;
+export type InsertNotification = z.infer<typeof insertNotificationSchema>;
+
+export type NotificationPreferences = typeof notificationPreferences.$inferSelect;
+export type InsertNotificationPreferences = z.infer<typeof insertNotificationPreferencesSchema>;
+
+export type Folder = typeof folders.$inferSelect;
+export type InsertFolder = z.infer<typeof insertFolderSchema>;
+
+export type File = typeof files.$inferSelect;
+export type InsertFile = z.infer<typeof insertFileSchema>;
+
+export type FileShare = typeof fileShares.$inferSelect;
+export type InsertFileShare = z.infer<typeof insertFileShareSchema>;
+
+export type TeamInvitation = typeof teamInvitations.$inferSelect;
+export type InsertTeamInvitation = z.infer<typeof insertTeamInvitationSchema>;
+
+export type UserSession = typeof userSessions.$inferSelect;
+export type InsertUserSession = z.infer<typeof insertUserSessionSchema>;
+
+export type SecurityEvent = typeof securityEvents.$inferSelect;
+export type InsertSecurityEvent = z.infer<typeof insertSecurityEventSchema>;
+
+export type IpWhitelist = typeof ipWhitelist.$inferSelect;
+export type InsertIpWhitelist = z.infer<typeof insertIpWhitelistSchema>;
+
+export type OnboardingProgress = typeof onboardingProgress.$inferSelect;
+export type InsertOnboardingProgress = z.infer<typeof insertOnboardingProgressSchema>;
