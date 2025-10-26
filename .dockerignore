@@ -1,0 +1,63 @@
+# Node modules
+node_modules
+npm-debug.log
+
+# Environment files
+.env
+.env.*
+!.env.example
+
+# Git files
+.git
+.gitignore
+.gitattributes
+
+# IDE files
+.vscode
+.idea
+*.swp
+*.swo
+*~
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Test files
+*.test.ts
+*.test.js
+*.spec.ts
+*.spec.js
+coverage
+
+# Documentation
+*.md
+!README.md
+docs
+
+# Build artifacts
+dist
+build
+.cache
+
+# Logs
+logs
+*.log
+
+# Misc
+.replit
+replit.md
+attached_assets
+login-state.png
+
+# Backups
+backups
+*.backup
+*.sql
+
+# Uploads (will be mounted as volume)
+uploads
+
+# Development files
+.local
+.config

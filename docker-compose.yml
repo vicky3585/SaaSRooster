@@ -1,0 +1,155 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: bizverse-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-bizverse_db}
+      POSTGRES_USER: ${POSTGRES_USER:-bizverse_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-SECURE_PASSWORD_PLACEHOLDER}
+      PGDATA: /var/lib/postgresql/data/pgdata
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./backups:/backups
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    networks:
+      - bizverse-network
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-bizverse_user} -d ${POSTGRES_DB:-bizverse_db}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Bizverse Application
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: bizverse-app
+    restart: unless-stopped
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      # Database
+      DATABASE_URL: postgresql://${POSTGRES_USER:-bizverse_user}:${POSTGRES_PASSWORD:-SECURE_PASSWORD_PLACEHOLDER}@postgres:5432/${POSTGRES_DB:-bizverse_db}
+      
+      # Application
+      NODE_ENV: ${NODE_ENV:-production}
+      PORT: ${PORT:-5000}
+      APP_URL: ${APP_URL:-http://localhost:5000}
+      
+      # JWT Secrets
+      JWT_SECRET: ${JWT_SECRET}
+      REFRESH_SECRET: ${REFRESH_SECRET}
+      ADMIN_JWT_SECRET: ${ADMIN_JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      
+      # Email Service
+      RESEND_API_KEY: ${RESEND_API_KEY}
+      FROM_EMAIL: ${FROM_EMAIL:-invoices@hugenetwork.in}
+      FROM_NAME: ${FROM_NAME:-Flying Venture System}
+      SUPPORT_EMAIL: ${SUPPORT_EMAIL:-hugenetwork7@gmail.com}
+      
+      # Payment Gateways
+      PAYUMONEY_MERCHANT_KEY: ${PAYUMONEY_MERCHANT_KEY}
+      PAYUMONEY_MERCHANT_SALT: ${PAYUMONEY_MERCHANT_SALT}
+      PAYUMONEY_BASE_URL: ${PAYUMONEY_BASE_URL:-https://test.payu.in/_payment}
+      
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID}
+      RAZORPAY_KEY_SECRET: ${RAZORPAY_KEY_SECRET}
+      
+      STRIPE_PUBLISHABLE_KEY: ${STRIPE_PUBLISHABLE_KEY}
+      STRIPE_SECRET_KEY: ${STRIPE_SECRET_KEY}
+      
+      # OpenAI (Optional)
+      OPENAI_API_KEY: ${OPENAI_API_KEY}
+      
+      # Subscription Settings
+      TRIAL_PERIOD_DAYS: ${TRIAL_PERIOD_DAYS:-20}
+      DEFAULT_SUBSCRIPTION_PLAN: ${DEFAULT_SUBSCRIPTION_PLAN:-starter}
+      TRIAL_WARNING_DAYS: ${TRIAL_WARNING_DAYS:-7,3,1}
+      
+      # Email Notifications
+      ENABLE_MONTHLY_SALES_SUMMARY: ${ENABLE_MONTHLY_SALES_SUMMARY:-true}
+      ENABLE_MONTHLY_PURCHASE_SUMMARY: ${ENABLE_MONTHLY_PURCHASE_SUMMARY:-true}
+      MONTHLY_SUMMARY_DAY: ${MONTHLY_SUMMARY_DAY:-1}
+      EMAIL_SEND_TIME: ${EMAIL_SEND_TIME:-09:00}
+      ENABLE_SCHEDULER: ${ENABLE_SCHEDULER:-true}
+      
+      # Security
+      RATE_LIMIT_WINDOW_MS: ${RATE_LIMIT_WINDOW_MS:-900000}
+      RATE_LIMIT_MAX_REQUESTS: ${RATE_LIMIT_MAX_REQUESTS:-100}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:5000}
+      
+      # File Upload
+      MAX_FILE_SIZE: ${MAX_FILE_SIZE:-10485760}
+      UPLOAD_DIR: ${UPLOAD_DIR:-./uploads}
+      
+      # Admin Account
+      ADMIN_EMAIL: ${ADMIN_EMAIL:-hugenetwork7@gmail.com}
+      ADMIN_PASSWORD: ${ADMIN_PASSWORD:-ADMIN_PASSWORD_PLACEHOLDER}
+      ADMIN_NAME: ${ADMIN_NAME:-Flying Venture Admin}
+      
+      # Logging
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      ENABLE_REQUEST_LOGGING: ${ENABLE_REQUEST_LOGGING:-true}
+      
+      # Features
+      ENABLE_AI_FEATURES: ${ENABLE_AI_FEATURES:-false}
+      ENABLE_RECURRING_INVOICES: ${ENABLE_RECURRING_INVOICES:-true}
+      ENABLE_CRM: ${ENABLE_CRM:-true}
+      ENABLE_ACCOUNTING: ${ENABLE_ACCOUNTING:-true}
+      ENABLE_INVENTORY: ${ENABLE_INVENTORY:-true}
+      
+      # Timezone
+      TZ: ${TZ:-UTC}
+    
+    volumes:
+      - app_uploads:/app/uploads
+      - app_logs:/app/logs
+    
+    ports:
+      - "${APP_PORT:-5000}:5000"
+    
+    networks:
+      - bizverse-network
+    
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/api/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+
+  # Optional: Adminer for database management (development only)
+  adminer:
+    image: adminer:latest
+    container_name: bizverse-adminer
+    restart: unless-stopped
+    depends_on:
+      - postgres
+    ports:
+      - "${ADMINER_PORT:-8080}:8080"
+    networks:
+      - bizverse-network
+    environment:
+      ADMINER_DEFAULT_SERVER: postgres
+    profiles:
+      - dev
+
+volumes:
+  postgres_data:
+    driver: local
+  app_uploads:
+    driver: local
+  app_logs:
+    driver: local
+
+networks:
+  bizverse-network:
+    driver: bridge

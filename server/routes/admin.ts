@@ -21,6 +21,7 @@ router.get("/organizations", async (req: any, res) => {
         gstin: organizations.gstin,
         status: organizations.status,
         subscriptionStatus: organizations.subscriptionStatus,
+        planId: organizations.planId,
         trialEndsAt: organizations.trialEndsAt,
         createdAt: organizations.createdAt,
       })
@@ -264,6 +265,130 @@ router.post("/users/:userId/reset-password", async (req: any, res) => {
       });
     }
     console.error("Admin reset password error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Change organization subscription plan
+router.patch("/organizations/:id/plan", async (req: any, res) => {
+  try {
+    const orgId = req.params.id;
+    const adminId = req.admin.userId;
+    
+    const { planId } = z.object({
+      planId: z.enum(["free", "basic", "pro", "enterprise"]),
+    }).parse(req.body);
+    
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+    
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+    
+    const oldPlanId = org.planId;
+    
+    // Update organization plan
+    await db
+      .update(organizations)
+      .set({
+        planId,
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, orgId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null, // Platform admin action
+      action: "change_organization_plan",
+      entityType: "organization",
+      entityId: orgId,
+      changes: {
+        organizationName: org.name,
+        oldPlanId,
+        newPlanId: planId,
+        changedBy: "platform_admin",
+        changedAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ 
+      message: "Subscription plan updated successfully",
+      planId,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: error.errors,
+      });
+    }
+    console.error("Change organization plan error:", error);
+    res.status(500).json({ message: "Internal server error" });
+  }
+});
+
+// Extend organization subscription validity
+router.patch("/organizations/:id/validity", async (req: any, res) => {
+  try {
+    const orgId = req.params.id;
+    const adminId = req.admin.userId;
+    
+    const { trialEndsAt } = z.object({
+      trialEndsAt: z.string().datetime(),
+    }).parse(req.body);
+    
+    const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
+    
+    if (!org) {
+      return res.status(404).json({ message: "Organization not found" });
+    }
+    
+    const oldTrialEndsAt = org.trialEndsAt;
+    const newTrialEndsAt = new Date(trialEndsAt);
+    
+    // Update organization validity
+    await db
+      .update(organizations)
+      .set({
+        trialEndsAt: newTrialEndsAt,
+        subscriptionStatus: "active", // Set to active when extending validity
+        updatedAt: new Date(),
+      })
+      .where(eq(organizations.id, orgId));
+    
+    // Create audit log
+    await db.insert(auditLogs).values({
+      userId: adminId,
+      orgId: null, // Platform admin action
+      action: "extend_organization_validity",
+      entityType: "organization",
+      entityId: orgId,
+      changes: {
+        organizationName: org.name,
+        oldTrialEndsAt: oldTrialEndsAt?.toISOString() || null,
+        newTrialEndsAt: newTrialEndsAt.toISOString(),
+        changedBy: "platform_admin",
+        changedAt: new Date().toISOString(),
+      },
+      ipAddress: req.ip,
+      userAgent: req.headers["user-agent"],
+    });
+    
+    res.json({ 
+      message: "Subscription validity extended successfully",
+      trialEndsAt: newTrialEndsAt,
+    });
+  } catch (error) {
+    if (error instanceof z.ZodError) {
+      return res.status(400).json({
+        message: "Validation error",
+        errors: error.errors,
+      });
+    }
+    console.error("Extend organization validity error:", error);
     res.status(500).json({ message: "Internal server error" });
   }
 });

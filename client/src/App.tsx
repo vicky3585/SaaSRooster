@@ -88,6 +88,7 @@ function AuthenticatedRouter() {
       <Route path="/inventory" component={() => <ProtectedRoute component={Inventory} />} />
       <Route path="/expenses" component={() => <ProtectedRoute component={Expenses} />} />
       <Route path="/staff" component={() => <ProtectedRoute component={Staff} />} />
+      <Route path="/subscription" component={() => <ProtectedRoute component={SubscriptionPayment} />} />
       <Route component={NotFound} />
     </Switch>
   );
