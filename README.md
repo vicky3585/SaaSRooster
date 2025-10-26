@@ -66,6 +66,121 @@
 
 ## ✨ Features
 
+### 🔐 Advanced Security Features (NEW!)
+
+#### Two-Factor Authentication (2FA)
+- ✅ TOTP (Time-based One-Time Password) support
+- ✅ QR code generation for authenticator apps (Google Authenticator, Authy, etc.)
+- ✅ 10 backup codes for account recovery
+- ✅ Secure backup code encryption
+- ✅ Setup wizard with step-by-step guide
+- ✅ Enable/disable with password confirmation
+- ✅ Security event logging
+
+#### API Keys Management
+- ✅ Generate secure API keys with custom permissions
+- ✅ Key prefix format: `bv_live_[64-char-hex]`
+- ✅ Usage tracking (endpoint, method, response time, IP)
+- ✅ Per-key permissions system
+- ✅ Expiration date support
+- ✅ Key revocation with audit trail
+- ✅ Usage analytics and statistics
+- ✅ Rate limiting per API key
+
+#### Session Management
+- ✅ Track active user sessions across devices
+- ✅ View session details (device, browser, OS, location)
+- ✅ Last activity timestamp
+- ✅ Remote session termination
+- ✅ Session expiration control
+- ✅ Suspicious activity detection
+
+#### IP Whitelisting
+- ✅ Organization-level IP restrictions
+- ✅ Multiple IP addresses per organization
+- ✅ Active/inactive toggle
+- ✅ IP address descriptions
+- ✅ Audit trail for changes
+
+#### Security Events & Audit Trail
+- ✅ Comprehensive security event logging
+- ✅ Track login attempts, 2FA events, password changes
+- ✅ API key operations logging
+- ✅ IP address and user agent tracking
+- ✅ Severity levels (info, warning, critical)
+- ✅ Searchable and filterable logs
+- ✅ Export capability
+
+### 🔗 Integration Features (NEW!)
+
+#### Webhooks System
+- ✅ Subscribe to application events
+- ✅ HMAC signature verification for security
+- ✅ Custom headers support
+- ✅ Automatic retry logic (configurable)
+- ✅ Webhook delivery logs
+- ✅ Status tracking (pending, success, failed)
+- ✅ Test webhook functionality
+- ✅ Event types:
+  - Invoice events (created, updated, paid)
+  - Customer events (created, updated)
+  - Payment received
+  - Subscription updated
+  - Organization updated
+
+#### Advanced Notification System
+- ✅ In-app notification center with real-time updates
+- ✅ Multiple notification types (info, success, warning, error)
+- ✅ Action buttons with quick links
+- ✅ Read/Unread status tracking
+- ✅ Bulk mark as read
+- ✅ Notification preferences per user
+- ✅ Email notification settings
+- ✅ Weekly digest option
+- ✅ Marketing email opt-in/out
+- ✅ Push notification support (ready)
+
+### 📁 File Management System (NEW!)
+- ✅ Upload files up to 50MB
+- ✅ Support for all common file types
+- ✅ Folder structure with nested folders
+- ✅ File categorization (images, documents, PDFs, spreadsheets, etc.)
+- ✅ File metadata storage (size, mime type, dimensions)
+- ✅ Thumbnail generation for images/videos
+- ✅ Public/Private file access control
+- ✅ File sharing between team members
+- ✅ Permission-based access (view, edit, delete)
+- ✅ File preview functionality
+- ✅ Bulk file operations
+
+### 👥 Enhanced Team Management (NEW!)
+
+#### Team Invitations
+- ✅ Email-based team invitations
+- ✅ Role assignment on invite
+- ✅ Secure invitation tokens
+- ✅ Invitation expiration (7 days default)
+- ✅ Resend invitation functionality
+- ✅ Invitation status tracking
+- ✅ Invitation history per organization
+
+#### Role-Based Access Control (RBAC)
+- ✅ Predefined roles (Owner, Admin, Manager, Member, Viewer)
+- ✅ Custom permissions per role
+- ✅ Granular access control
+- ✅ Feature-level permissions
+- ✅ Easy role assignment and management
+
+### 🚀 Onboarding & User Experience (NEW!)
+- ✅ Onboarding progress tracking
+- ✅ Step-by-step setup wizard
+- ✅ Completed steps tracking
+- ✅ Skip onboarding option
+- ✅ Per-organization onboarding
+- ✅ Interactive product tour (UI ready)
+- ✅ Setup checklist
+- ✅ Help tooltips and guides
+
 ### 💰 Billing & Invoicing
 - ✅ Create, manage, and track sales invoices
 - ✅ GST-compliant invoicing (CGST, SGST, IGST)
@@ -981,6 +1096,54 @@ X-RateLimit-Reset: 1697198400
   "error": "Too many requests, please try again later",
   "code": "RATE_LIMIT_EXCEEDED"
 }
+```
+
+#### 🔐 Two-Factor Authentication (NEW!)
+```http
+POST   /api/2fa/setup                   - Generate 2FA secret and QR code
+POST   /api/2fa/enable                  - Enable 2FA with verification
+POST   /api/2fa/verify                  - Verify 2FA token
+POST   /api/2fa/disable                 - Disable 2FA
+GET    /api/2fa/status                  - Get 2FA status
+POST   /api/2fa/regenerate-backup-codes - Generate new backup codes
+```
+
+#### 🔑 API Keys Management (NEW!)
+```http
+POST   /api/api-keys         - Create new API key
+GET    /api/api-keys         - List all API keys with stats
+GET    /api/api-keys/:id     - Get API key details and usage
+PATCH  /api/api-keys/:id     - Update API key permissions
+DELETE /api/api-keys/:id     - Revoke API key
+```
+
+#### 🔗 Webhooks (NEW!)
+```http
+POST   /api/webhooks         - Create webhook
+GET    /api/webhooks         - List all webhooks
+GET    /api/webhooks/:id     - Get webhook details
+PATCH  /api/webhooks/:id     - Update webhook
+DELETE /api/webhooks/:id     - Delete webhook
+POST   /api/webhooks/:id/test - Test webhook delivery
+```
+
+#### 🔔 Notifications (NEW!)
+```http
+GET    /api/notifications              - Get user notifications
+PATCH  /api/notifications/:id/read     - Mark notification as read
+POST   /api/notifications/mark-all-read - Mark all as read
+DELETE /api/notifications/:id          - Delete notification
+GET    /api/notifications/preferences  - Get notification preferences
+PATCH  /api/notifications/preferences  - Update preferences
+```
+
+#### 📁 File Management (NEW!)
+```http
+POST   /api/files/upload    - Upload file (multipart/form-data)
+GET    /api/files           - List files
+DELETE /api/files/:id       - Delete file
+POST   /api/files/folders   - Create folder
+GET    /api/files/folders   - List folders
 ```
 
 ### Example API Calls
