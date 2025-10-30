@@ -3,7 +3,8 @@ import { db } from '../db';
 import { organizations, invoices, purchaseInvoices, users, memberships } from '@shared/schema';
 import { eq, and, gte, lte, desc, sql } from 'drizzle-orm';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+// Initialize Resend only if API key is available (optional for development)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
 const FROM_EMAIL = process.env.FROM_EMAIL || 'invoices@hugenetwork.in';
 const FROM_NAME = process.env.FROM_NAME || 'Flying Venture System';
 
@@ -31,9 +32,22 @@ interface MonthlyPurchaseSummary {
 
 export class NotificationService {
   /**
+   * Check if email service is configured
+   */
+  private isEmailServiceAvailable(): boolean {
+    if (!resend) {
+      console.log('Email service not configured, skipping notification');
+      return false;
+    }
+    return true;
+  }
+
+  /**
    * Send monthly sales summary to organization admins
    */
   async sendMonthlySalesSummary(orgId: string, month: number, year: number): Promise<void> {
+    if (!this.isEmailServiceAvailable()) return;
+
     try {
       const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
       
@@ -89,6 +103,8 @@ export class NotificationService {
    * Send monthly purchase summary to organization admins
    */
   async sendMonthlyPurchaseSummary(orgId: string, month: number, year: number): Promise<void> {
+    if (!this.isEmailServiceAvailable()) return;
+
     try {
       const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
       
@@ -144,6 +160,8 @@ export class NotificationService {
    * Send trial expiration warning
    */
   async sendTrialExpirationWarning(orgId: string, daysLeft: number): Promise<void> {
+    if (!this.isEmailServiceAvailable()) return;
+
     try {
       const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
       
@@ -194,6 +212,8 @@ export class NotificationService {
    * Send subscription renewal reminder
    */
   async sendSubscriptionRenewalReminder(orgId: string, daysUntilExpiry: number): Promise<void> {
+    if (!this.isEmailServiceAvailable()) return;
+
     try {
       const [org] = await db.select().from(organizations).where(eq(organizations.id, orgId));
       

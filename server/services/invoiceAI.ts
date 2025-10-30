@@ -1,12 +1,18 @@
 import OpenAI from "openai";
 
 // the newest OpenAI model is "gpt-5" which was released August 7, 2025. do not change this unless explicitly requested by the user
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize OpenAI only if API key is available (optional for development)
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 /**
  * Generate a professional item description based on a product name
  */
 export async function generateItemDescription(itemName: string): Promise<string> {
+  if (!openai) {
+    console.log('OpenAI not configured, returning item name as-is');
+    return itemName;
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -37,6 +43,11 @@ export async function suggestHSNCode(itemDescription: string): Promise<{
   code: string;
   description: string;
 }> {
+  if (!openai) {
+    console.log('OpenAI not configured, returning empty HSN code');
+    return { code: "", description: "" };
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -78,6 +89,11 @@ export async function analyzeInvoice(invoiceData: {
   recommendations: string[];
   riskLevel: "low" | "medium" | "high";
 }> {
+  if (!openai) {
+    console.log('OpenAI not configured, returning empty analysis');
+    return { insights: [], recommendations: [], riskLevel: "low" };
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",
@@ -123,6 +139,11 @@ Provide insights, recommendations, and assess payment risk level.`,
  * Smart tax rate suggestion based on item type
  */
 export async function suggestTaxRate(itemDescription: string): Promise<number> {
+  if (!openai) {
+    console.log('OpenAI not configured, returning default tax rate');
+    return 18;
+  }
+
   try {
     const response = await openai.chat.completions.create({
       model: "gpt-5",

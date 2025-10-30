@@ -443,12 +443,30 @@ export default function Invoices() {
         throw new Error('Failed to fetch PDF');
       }
 
-      const html = await response.text();
-      const printWindow = window.open('', '_blank');
-      if (printWindow) {
-        printWindow.document.write(html);
-        printWindow.document.close();
-      }
+      // Get the PDF as a blob
+      const blob = await response.blob();
+      
+      // Create a download link
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      
+      // Determine filename based on invoice type
+      const docType = invoice.status === 'draft' ? 'quotation' : 'invoice';
+      link.download = `${docType}-${invoice.invoiceNumber}.pdf`;
+      
+      // Trigger download
+      document.body.appendChild(link);
+      link.click();
+      
+      // Cleanup
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(url);
+      
+      toast({
+        title: "Success",
+        description: "PDF downloaded successfully.",
+      });
     } catch (error) {
       toast({
         title: "Error",

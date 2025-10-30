@@ -3,8 +3,9 @@ import OpenAI from 'openai';
 import type { Invoice, InvoiceItem, Customer, Organization } from "../../shared/schema";
 import { generateInvoicePDF } from './pdfGenerator';
 
-const resend = new Resend(process.env.RESEND_API_KEY);
-const openai = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+// Initialize services only if API keys are available (optional for development)
+const resend = process.env.RESEND_API_KEY ? new Resend(process.env.RESEND_API_KEY) : null;
+const openai = process.env.OPENAI_API_KEY ? new OpenAI({ apiKey: process.env.OPENAI_API_KEY }) : null;
 
 interface EmailInvoiceData {
   invoice: Invoice;
@@ -44,6 +45,15 @@ Return ONLY a JSON object with this exact format:
 }`;
 
   try {
+    if (!openai) {
+      // If OpenAI is not configured, use fallback template
+      console.log('OpenAI not configured, using fallback email template');
+      return {
+        subject: `Invoice ${invoice.invoiceNumber} from ${organization.name}`,
+        body: `Dear ${customer.name},\n\nPlease find your invoice ${invoice.invoiceNumber} for ₹${invoice.total}.\n\nDue date: ${new Date(invoice.dueDate).toLocaleDateString('en-IN')}\n\nThank you for your business!\n\nBest regards,\n${organization.name}`
+      };
+    }
+
     const completion = await openai.chat.completions.create({
       model: "gpt-4o-mini",
       messages: [
@@ -77,6 +87,11 @@ export async function sendInvoiceEmail(
 
   if (!customer.email) {
     return { success: false, error: 'Customer email not found' };
+  }
+
+  if (!resend) {
+    console.log('Resend service not configured, skipping email send');
+    return { success: false, error: 'Email service not configured. Please add RESEND_API_KEY to environment variables.' };
   }
 
   try {
