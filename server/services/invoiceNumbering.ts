@@ -40,6 +40,9 @@ async function findFirstAvailableSequenceNumber(
 ): Promise<number> {
   // Get all existing invoices for this org with the matching prefix pattern
   const pattern = `${prefix}-${fiscalYear}-%`;
+  console.log(`[DEBUG] Finding available sequence number for orgId: ${orgId}, prefix: ${prefix}, fiscalYear: ${fiscalYear}`);
+  console.log(`[DEBUG] Pattern: ${pattern}`);
+  
   const existingInvoices = await db
     .select({ invoiceNumber: invoices.invoiceNumber })
     .from(invoices)
@@ -49,6 +52,8 @@ async function findFirstAvailableSequenceNumber(
         like(invoices.invoiceNumber, pattern)
       )
     );
+  
+  console.log(`[DEBUG] Found ${existingInvoices.length} existing invoices:`, existingInvoices.map(inv => inv.invoiceNumber));
   
   // Extract sequence numbers from invoice numbers
   const sequenceNumbers: number[] = [];
@@ -64,23 +69,36 @@ async function findFirstAvailableSequenceNumber(
     }
   }
   
+  console.log(`[DEBUG] Extracted sequence numbers:`, sequenceNumbers);
+  
   // If no invoices exist, start from 1
   if (sequenceNumbers.length === 0) {
+    console.log(`[DEBUG] No invoices found, returning 1`);
     return 1;
   }
   
   // Sort sequence numbers
   sequenceNumbers.sort((a, b) => a - b);
+  console.log(`[DEBUG] Sorted sequence numbers:`, sequenceNumbers);
   
-  // Find the first gap in the sequence
-  for (let i = 1; i <= sequenceNumbers.length; i++) {
-    if (!sequenceNumbers.includes(i)) {
-      return i;
+  // Convert to Set for O(1) lookup
+  const sequenceSet = new Set(sequenceNumbers);
+  
+  // Find the first gap in the sequence starting from 1
+  let expectedNumber = 1;
+  for (const num of sequenceNumbers) {
+    console.log(`[DEBUG] Checking expected: ${expectedNumber}, found: ${num}`);
+    if (num > expectedNumber) {
+      // Found a gap!
+      console.log(`[DEBUG] Found gap! Expected ${expectedNumber} but found ${num}, returning ${expectedNumber}`);
+      return expectedNumber;
     }
+    expectedNumber = num + 1;
   }
   
   // No gaps found, return next number after the highest
-  return sequenceNumbers[sequenceNumbers.length - 1] + 1;
+  console.log(`[DEBUG] No gaps found, returning next number: ${expectedNumber}`);
+  return expectedNumber;
 }
 
 /**
