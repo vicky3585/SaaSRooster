@@ -175,6 +175,8 @@ export const planEnum = pgEnum("plan", [
   "basic",
   "pro",
   "enterprise",
+  "starter",
+  "professional",
 ]);
 
 export const billingCycleEnum = pgEnum("billing_cycle", [
@@ -216,17 +218,22 @@ export const organizations = pgTable("organizations", {
   pincode: varchar("pincode", { length: 6 }),
   country: text("country").default("India"),
   logoUrl: text("logo_url"),
+  qrCodePath: text("qr_code_path"),
   bankDetails: jsonb("bank_details").$type<{
     bankName?: string;
     accountNumber?: string;
     ifscCode?: string;
+    accountHolderName?: string;
     branch?: string;
+    accountType?: string;
+    additionalInfo?: string;
   }>(),
   fiscalYearStart: integer("fiscal_year_start").default(4), // April = 4
   invoicePrefix: text("invoice_prefix").default("INV"),
   trialStartedAt: timestamp("trial_started_at"),
   trialEndsAt: timestamp("trial_ends_at"),
   subscriptionStatus: subscriptionStatusEnum("subscription_status").default("trialing"),
+  subscriptionExpiresAt: timestamp("subscription_expires_at"),
   planId: planEnum("plan_id").default("free"),
   status: organizationStatusEnum("status").default("active").notNull(),
   isActive: boolean("is_active").default(true),
