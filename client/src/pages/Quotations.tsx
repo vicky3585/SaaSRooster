@@ -86,9 +86,9 @@ export default function Quotations() {
     }
   }, [nextInvoiceNumberData]);
 
-  // Filter for quotations (draft invoices)
+  // Filter for quotations (items with QT- prefix)
   const filteredQuotations = quotations
-    .filter(q => q.status === "draft")
+    .filter(q => q.invoiceNumber.startsWith("QT-"))
     .filter(q => 
       !searchQuery || 
       q.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())

@@ -203,8 +203,9 @@ export default function Invoices() {
       
       const total = subtotal + cgst + sgst + igst;
       
+      // Don't send invoiceNumber in payload - let backend generate it
+      // This ensures the auto-increment counter is properly updated
       const payload = {
-        invoiceNumber: data.invoiceNumber,
         customerId: data.customerId,
         invoiceDate: new Date(data.invoiceDate).toISOString(),
         dueDate: new Date(data.dueDate).toISOString(),
@@ -356,7 +357,8 @@ export default function Invoices() {
 
   const filteredInvoices = invoices.filter(
     (invoice) =>
-      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase())
+      invoice.invoiceNumber.toLowerCase().includes(searchQuery.toLowerCase()) &&
+      invoice.invoiceNumber.startsWith("INV-")
   );
 
   const handleCreateInvoice = () => {

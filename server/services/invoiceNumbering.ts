@@ -1,6 +1,6 @@
 import { db } from "../db";
-import { sequenceCounters, organizations } from "@shared/schema";
-import { eq, and } from "drizzle-orm";
+import { sequenceCounters, organizations, invoices } from "@shared/schema";
+import { eq, and, like } from "drizzle-orm";
 
 /**
  * Get the current fiscal year based on organization's fiscal year start month
@@ -27,6 +27,63 @@ function getCurrentFiscalYear(fiscalYearStart: number): string {
 }
 
 /**
+ * Find the first available sequence number (fills gaps after deletions)
+ * @param orgId - Organization ID
+ * @param prefix - Invoice prefix (e.g., "INV")
+ * @param fiscalYear - Fiscal year string (e.g., "24-25")
+ * @returns The first available sequence number
+ */
+async function findFirstAvailableSequenceNumber(
+  orgId: string,
+  prefix: string,
+  fiscalYear: string
+): Promise<number> {
+  // Get all existing invoices for this org with the matching prefix pattern
+  const pattern = `${prefix}-${fiscalYear}-%`;
+  const existingInvoices = await db
+    .select({ invoiceNumber: invoices.invoiceNumber })
+    .from(invoices)
+    .where(
+      and(
+        eq(invoices.orgId, orgId),
+        like(invoices.invoiceNumber, pattern)
+      )
+    );
+  
+  // Extract sequence numbers from invoice numbers
+  const sequenceNumbers: number[] = [];
+  const expectedPrefix = `${prefix}-${fiscalYear}-`;
+  
+  for (const inv of existingInvoices) {
+    if (inv.invoiceNumber.startsWith(expectedPrefix)) {
+      const sequencePart = inv.invoiceNumber.substring(expectedPrefix.length);
+      const sequenceNum = parseInt(sequencePart, 10);
+      if (!isNaN(sequenceNum)) {
+        sequenceNumbers.push(sequenceNum);
+      }
+    }
+  }
+  
+  // If no invoices exist, start from 1
+  if (sequenceNumbers.length === 0) {
+    return 1;
+  }
+  
+  // Sort sequence numbers
+  sequenceNumbers.sort((a, b) => a - b);
+  
+  // Find the first gap in the sequence
+  for (let i = 1; i <= sequenceNumbers.length; i++) {
+    if (!sequenceNumbers.includes(i)) {
+      return i;
+    }
+  }
+  
+  // No gaps found, return next number after the highest
+  return sequenceNumbers[sequenceNumbers.length - 1] + 1;
+}
+
+/**
  * Preview the next invoice number without incrementing the counter
  * @param orgId - Organization ID
  * @returns Preview of next invoice number (e.g., "INV-24-25-00001")
@@ -45,19 +102,9 @@ export async function previewNextInvoiceNumber(orgId: string): Promise<string> {
   const prefix = org.invoicePrefix || "INV";
   const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
   
-  // Check if counter exists for this org, entity type, and fiscal year
-  const [counter] = await db
-    .select()
-    .from(sequenceCounters)
-    .where(
-      and(
-        eq(sequenceCounters.orgId, orgId),
-        eq(sequenceCounters.entityType, "invoice"),
-        eq(sequenceCounters.fiscalYear, fiscalYear)
-      )
-    );
+  // Find the first available sequence number (fills gaps after deletions)
+  const nextValue = await findFirstAvailableSequenceNumber(orgId, prefix, fiscalYear);
   
-  const nextValue = counter ? counter.currentValue + 1 : 1;
   return `${prefix}-${fiscalYear}-${String(nextValue).padStart(5, '0')}`;
 }
 
@@ -80,46 +127,10 @@ export async function generateInvoiceNumber(orgId: string): Promise<string> {
   const prefix = org.invoicePrefix || "INV";
   const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
   
-  // Check if counter exists for this org, entity type, and fiscal year
-  const [counter] = await db
-    .select()
-    .from(sequenceCounters)
-    .where(
-      and(
-        eq(sequenceCounters.orgId, orgId),
-        eq(sequenceCounters.entityType, "invoice"),
-        eq(sequenceCounters.fiscalYear, fiscalYear)
-      )
-    );
+  // Find the first available sequence number (fills gaps after deletions)
+  const nextValue = await findFirstAvailableSequenceNumber(orgId, prefix, fiscalYear);
   
-  if (!counter) {
-    // Create new counter starting from 1
-    const [newCounter] = await db
-      .insert(sequenceCounters)
-      .values({
-        orgId,
-        entityType: "invoice",
-        fiscalYear,
-        prefix,
-        currentValue: 1,
-      })
-      .returning();
-    
-    return `${newCounter.prefix}-${newCounter.fiscalYear}-${String(newCounter.currentValue).padStart(5, '0')}`;
-  }
-  
-  // Increment existing counter
-  const nextValue = counter.currentValue + 1;
-  
-  await db
-    .update(sequenceCounters)
-    .set({ 
-      currentValue: nextValue,
-      updatedAt: new Date(),
-    })
-    .where(eq(sequenceCounters.id, counter.id));
-  
-  return `${counter.prefix}-${counter.fiscalYear}-${String(nextValue).padStart(5, '0')}`;
+  return `${prefix}-${fiscalYear}-${String(nextValue).padStart(5, '0')}`;
 }
 
 /**
@@ -141,19 +152,9 @@ export async function previewNextQuotationNumber(orgId: string): Promise<string>
   const prefix = "QT"; // Fixed prefix for quotations
   const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
   
-  // Check if counter exists for this org, entity type, and fiscal year
-  const [counter] = await db
-    .select()
-    .from(sequenceCounters)
-    .where(
-      and(
-        eq(sequenceCounters.orgId, orgId),
-        eq(sequenceCounters.entityType, "quotation"),
-        eq(sequenceCounters.fiscalYear, fiscalYear)
-      )
-    );
+  // Find the first available sequence number (fills gaps after deletions)
+  const nextValue = await findFirstAvailableSequenceNumber(orgId, prefix, fiscalYear);
   
-  const nextValue = counter ? counter.currentValue + 1 : 1;
   return `${prefix}-${fiscalYear}-${String(nextValue).padStart(5, '0')}`;
 }
 
@@ -176,44 +177,8 @@ export async function generateQuotationNumber(orgId: string): Promise<string> {
   const prefix = "QT"; // Fixed prefix for quotations
   const fiscalYear = getCurrentFiscalYear(org.fiscalYearStart || 4);
   
-  // Check if counter exists for this org, entity type, and fiscal year
-  const [counter] = await db
-    .select()
-    .from(sequenceCounters)
-    .where(
-      and(
-        eq(sequenceCounters.orgId, orgId),
-        eq(sequenceCounters.entityType, "quotation"),
-        eq(sequenceCounters.fiscalYear, fiscalYear)
-      )
-    );
+  // Find the first available sequence number (fills gaps after deletions)
+  const nextValue = await findFirstAvailableSequenceNumber(orgId, prefix, fiscalYear);
   
-  if (!counter) {
-    // Create new counter starting from 1
-    const [newCounter] = await db
-      .insert(sequenceCounters)
-      .values({
-        orgId,
-        entityType: "quotation",
-        fiscalYear,
-        prefix,
-        currentValue: 1,
-      })
-      .returning();
-    
-    return `${newCounter.prefix}-${newCounter.fiscalYear}-${String(newCounter.currentValue).padStart(5, '0')}`;
-  }
-  
-  // Increment existing counter
-  const nextValue = counter.currentValue + 1;
-  
-  await db
-    .update(sequenceCounters)
-    .set({ 
-      currentValue: nextValue,
-      updatedAt: new Date(),
-    })
-    .where(eq(sequenceCounters.id, counter.id));
-  
-  return `${counter.prefix}-${counter.fiscalYear}-${String(nextValue).padStart(5, '0')}`;
+  return `${prefix}-${fiscalYear}-${String(nextValue).padStart(5, '0')}`;
 }
